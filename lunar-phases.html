@@ -1,0 +1,1222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lunar Phases</title>
+<meta name="description" content="An interactive explanation of the lunar cycle showing how the Sun, Earth and Moon are positioned for each phase.">
+<style>
+  :root {
+    --bg: #070a14;
+    --panel: #0e1324;
+    --panel-2: #141a30;
+    --line: #232b45;
+    --text: #e9ecf6;
+    --muted: #98a1bd;
+    --sun: #ffcf5c;
+    --sky: #5cc8ff;
+    --moon-lit: #f3eedb;
+    --moon-dark: #222839;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(255, 190, 80, .08), transparent 60%),
+      radial-gradient(900px 600px at 110% 10%, rgba(92, 200, 255, .07), transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 16px 64px; }
+  header.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+  .lang { display: flex; gap: 6px; flex: none; padding-top: 6px; }
+  .flag { padding: 4px; line-height: 0; border-radius: 8px; background: transparent; border: 1px solid var(--line); opacity: .55; }
+  .flag:hover { opacity: 1; }
+  .flag[aria-pressed=true] { opacity: 1; border-color: var(--sun); }
+  .flag svg { width: 30px; height: 20px; display: block; border-radius: 3px; }
+  header h1 { font-size: clamp(1.7rem, 3.5vw, 2.4rem); margin: 0 0 6px; letter-spacing: -.01em; }
+  header p { margin: 0; color: var(--muted); max-width: 760px; }
+  h2 { font-size: 1.25rem; margin: 0 0 14px; }
+
+  .stage { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 18px; margin-top: 24px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .card-title { font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+
+  #orbit { width: 100%; height: auto; display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: .85rem; color: var(--muted); margin-top: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .sw { width: 14px; height: 14px; border-radius: 50%; display: inline-block; flex: none; }
+  .sw.lit { background: linear-gradient(90deg, var(--moon-lit) 50%, var(--moon-dark) 50%); }
+  .sw.face { border: 2.5px solid var(--sky); border-left-color: transparent; border-bottom-color: transparent; transform: rotate(45deg); }
+  .sw.dot { width: 8px; height: 8px; background: #ff7a7a; }
+
+  .olabel { cursor: pointer; }
+  .olabel text { fill: var(--muted); font-size: 13px; transition: fill .2s; }
+  .olabel.active text { fill: var(--text); font-weight: 700; }
+  .olabel:hover text { fill: var(--text); }
+
+  .view { display: flex; flex-direction: column; gap: 14px; }
+  #sky { width: 100%; max-width: 260px; height: auto; display: block; margin: 0 auto; }
+  .phase-name { text-align: center; font-size: 1.6rem; font-weight: 700; margin: 2px 0 0; }
+  .phase-sub { text-align: center; color: var(--muted); margin: 0; font-size: .92rem; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  .stat b { display: block; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+  .stat small { color: var(--muted); font-size: .76rem; text-transform: uppercase; letter-spacing: .08em; }
+  .explain { margin: 0; color: #cfd5e8; font-size: .95rem; }
+
+  .controls { margin-top: 18px; display: grid; gap: 14px; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }
+  button, select { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; cursor: pointer; }
+  button:hover, select:hover { border-color: #3a4670; }
+  button:focus-visible, select:focus-visible, input:focus-visible, .olabel:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
+  #play { min-width: 96px; font-weight: 600; }
+  .slider-wrap { flex: 1 1 320px; display: flex; align-items: center; gap: 12px; min-width: 0; }
+  input[type=range] { flex: 1; min-width: 0; accent-color: var(--sun); }
+  #dayLabel { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; min-width: 9.5em; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; background: transparent; color: var(--muted); padding: 8px 12px; }
+  .seg button[aria-pressed=true] { background: var(--panel-2); color: var(--text); box-shadow: inset 0 -2px 0 var(--sun); }
+  label.chk { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); cursor: pointer; }
+  label.chk input { accent-color: var(--sky); width: 16px; height: 16px; }
+  .muted { color: var(--muted); }
+
+  .strip { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; }
+  .strip button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; font-size: .78rem; line-height: 1.2; text-align: center; }
+  .strip button.active { border-color: var(--sun); background: #1c2034; }
+  .strip svg { width: 34px; height: 34px; }
+  .strip .d { color: var(--muted); font-size: .7rem; }
+
+  section { margin-top: 36px; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; min-width: 760px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { background: var(--panel-2); color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; }
+  tbody tr { cursor: pointer; background: var(--panel); }
+  tbody tr:hover { background: #121830; }
+  tbody tr.active { background: #1c2034; box-shadow: inset 3px 0 0 var(--sun); }
+  tbody tr:last-child td { border-bottom: 0; }
+  td .ico { width: 26px; height: 26px; vertical-align: middle; margin-right: 8px; }
+  td { font-variant-numeric: tabular-nums; }
+
+  .ideas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .idea h3 { margin: 0 0 6px; font-size: 1rem; }
+  .idea p { margin: 0; color: #c7cde0; font-size: .93rem; }
+  .idea .n { color: var(--sun); font-weight: 700; margin-right: 6px; }
+
+  footer { margin-top: 36px; color: var(--muted); font-size: .85rem; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-top: 22px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .tabs button { border: 0; border-radius: 10px 10px 0 0; background: transparent; color: var(--muted); padding: 10px 16px; font-weight: 600; white-space: nowrap; }
+  .tabs button:hover { color: var(--text); }
+  .tabs button[aria-selected=true] { color: var(--text); background: var(--panel); box-shadow: inset 0 -2px 0 var(--sun); }
+  .tabs .badge { font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #c9b3ff; border: 1px solid #4b3d7a; border-radius: 6px; padding: 1px 6px; margin-left: 6px; vertical-align: 2px; }
+  [role=tabpanel] > .stage { margin-top: 18px; }
+
+  /* Advanced view */
+  #helio { width: 100%; height: auto; display: block; }
+  #zoom { width: 100%; max-width: 300px; height: auto; display: block; margin: 0 auto; }
+  .ln { width: 20px; height: 0; border-top: 2px solid; display: inline-block; flex: none; }
+  .ln.trail { border-color: #cfd6ea; }
+  .ln.arc { border-color: var(--sky); border-top-width: 3px; }
+  .ln.sun { border-color: var(--sun); border-top-style: dashed; }
+  .ln.star { border-color: #b18cff; border-top-style: dashed; }
+  .ln.spiral { border-color: var(--sky); }
+  .sw.ghost { background: #2b78c9; opacity: .45; }
+  .zlegend { display: grid; gap: 4px; font-size: .82rem; color: var(--muted); }
+  .zlegend span { display: flex; align-items: center; gap: 8px; }
+  .phase-row { display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .phase-row svg { width: 44px; height: 44px; flex: none; }
+  .phase-row b { display: block; font-size: 1.15rem; }
+  .phase-row small { color: var(--muted); }
+  #aPlay { min-width: 96px; font-weight: 600; }
+  #aDayLabel, #aScaleLabel { font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+  #aDayLabel { min-width: 10.5em; }
+  .note { font-size: .82rem; color: var(--muted); }
+  .hmonth { fill: #6f7899; font-size: 12px; }
+  .hmonth.active { fill: var(--text); font-weight: 700; }
+  .note.warn { color: #ffb38a; }
+
+  @media (max-width: 920px) {
+    .stage { grid-template-columns: 1fr; }
+    .ideas { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    .strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .ideas { grid-template-columns: 1fr; }
+    .olabel text { font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+    <h1 data-i18n="h1">Why the Moon Has Phases</h1>
+    <p data-i18n="intro">The Sun always lights exactly half of the Moon. As the Moon circles Earth every 29.5 days, we see a changing share of that sunlit half. Press play, drag the slider or click a phase to see how the Sun, Earth and Moon line up.</p>
+    </div>
+    <div class="lang" role="group" aria-label="Language" data-i18n-aria="langAria">
+      <button type="button" class="flag" data-lang="en" aria-pressed="true" aria-label="English" title="English">
+        <svg viewBox="0 0 60 30" aria-hidden="true"><clipPath id="ukClip"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath><rect width="60" height="30" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" clip-path="url(#ukClip)" stroke="#C8102E" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="#fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="#C8102E" stroke-width="6"/></svg>
+      </button>
+      <button type="button" class="flag" data-lang="pl" aria-pressed="false" aria-label="Polski" title="Polski">
+        <svg viewBox="0 0 16 10" aria-hidden="true"><rect width="16" height="5" fill="#fff"/><rect y="5" width="16" height="5" fill="#dc143c"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Views" data-i18n-aria="ariaTabs">
+    <button type="button" role="tab" id="tabBtn-phases" aria-controls="tab-phases" aria-selected="true"><span data-i18n="tabPhases">Phases</span></button>
+    <button type="button" role="tab" id="tabBtn-advanced" aria-controls="tab-advanced" aria-selected="false" tabindex="-1"><span data-i18n="tabAdv">Around the Sun</span><span class="badge" data-i18n="badge">Advanced</span></button>
+  </nav>
+
+  <div id="tab-phases" role="tabpanel" aria-labelledby="tabBtn-phases">
+  <div class="stage">
+    <div class="card">
+      <p class="card-title" data-i18n="orbitTitle">Top view: looking down on the North Pole</p>
+      <svg id="orbit" viewBox="0 0 780 620" role="img" aria-label="Diagram of the Moon orbiting Earth with sunlight coming from the left" data-i18n-aria="ariaOrbit">
+        <defs>
+          <radialGradient id="sunGlow" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#fff6d0"/>
+            <stop offset="0.4" stop-color="#ffd36b"/>
+            <stop offset="0.7" stop-color="#ffaa3c" stop-opacity=".28"/>
+            <stop offset="1" stop-color="#ff9a2a" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="earthGrad" cx="0.35" cy="0.4" r="0.75">
+            <stop offset="0" stop-color="#7fd0ff"/>
+            <stop offset="0.6" stop-color="#2b78c9"/>
+            <stop offset="1" stop-color="#173f7d"/>
+          </radialGradient>
+          <marker id="arrSun" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="#ffcf5c"/>
+          </marker>
+          <marker id="arrMuted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="#8892b0"/>
+          </marker>
+        </defs>
+
+        <g id="stars"></g>
+
+        <!-- Sun (off to the left) -->
+        <circle cx="-40" cy="310" r="190" fill="url(#sunGlow)"/>
+        <circle cx="-40" cy="310" r="78" fill="#fff1bf"/>
+        <text x="8" y="306" fill="#6b4a00" font-size="15" font-weight="700" data-i18n="sun">SUN</text>
+        <text x="8" y="324" fill="#7a5a10" font-size="11" data-i18n="farAway">far away</text>
+        <g id="rays" stroke="#ffcf5c" stroke-width="2" stroke-linecap="round" opacity=".85"></g>
+        <text x="104" y="60" fill="#ffcf5c" font-size="12" data-i18n="sunlight">sunlight →</text>
+
+        <!-- Moon's orbit -->
+        <circle id="orbitPath" fill="none" stroke="#3a4468" stroke-width="1.5" stroke-dasharray="4 6"/>
+        <path id="orbitArrow" fill="none" stroke="#8892b0" stroke-width="1.5" marker-end="url(#arrMuted)"/>
+
+        <!-- Line of sight -->
+        <line id="sight" stroke="#5cc8ff" stroke-width="1.5" stroke-dasharray="3 5" opacity=".55"/>
+
+        <!-- Earth -->
+        <g id="earth">
+          <circle id="earthBody" r="42" fill="url(#earthGrad)"/>
+          <path id="earthLand" fill="#3fa56b" opacity=".75"/>
+          <path id="earthNight" fill="#030614" opacity=".62"/>
+          <circle id="earthPole" r="3" fill="#fff"/>
+          <path id="earthSpin" fill="none" stroke="#8892b0" stroke-width="1.5" marker-end="url(#arrMuted)"/>
+          <g id="earthTimes" font-size="11" fill="#8892b0" text-anchor="middle" stroke="#0e1324" stroke-width="4" stroke-linejoin="round" paint-order="stroke"></g>
+        </g>
+
+        <!-- Moon -->
+        <g id="moon">
+          <circle id="moonDark" r="20" fill="#222839" stroke="#3a4260" stroke-width="1"/>
+          <path id="moonLit" fill="#f3eedb"/>
+          <g id="moonFacing">
+            <path id="facingArc" fill="none" stroke="#5cc8ff" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="11" cy="0" r="3" fill="#ff7a7a"/>
+          </g>
+        </g>
+
+        <g id="labels"></g>
+      </svg>
+      <div class="legend">
+        <span><i class="sw lit"></i><span data-i18n="legLit">Sunlit half (always faces the Sun)</span></span>
+        <span><i class="sw face"></i><span data-i18n="legFace">Half facing Earth (what we can see)</span></span>
+        <span><i class="sw dot"></i><span data-i18n="legDot">Same spot always faces Earth</span></span>
+        <span data-i18n="notToScale">Not to scale</span>
+      </div>
+    </div>
+
+    <div class="card view">
+      <div>
+        <p class="card-title" id="viewTitle">Seen from Earth · Northern Hemisphere</p>
+        <svg id="sky" viewBox="0 0 220 220" role="img" aria-label="The Moon as seen from Earth" data-i18n-aria="ariaSky">
+          <defs>
+            <clipPath id="diskClip"><circle cx="110" cy="110" r="88"/></clipPath>
+            <filter id="soft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.4"/></filter>
+            <filter id="glowBlur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="12"/></filter>
+          </defs>
+          <g id="skyStars"></g>
+          <circle id="moonGlow" cx="110" cy="110" r="92" fill="#f3eedb" opacity="0" filter="url(#glowBlur)"/>
+          <g clip-path="url(#diskClip)">
+            <circle cx="110" cy="110" r="88" fill="#1d2232"/>
+            <path id="skyLit" fill="#f1ecd9" filter="url(#soft)"/>
+            <g id="maria" fill="#2a2618" opacity=".2">
+              <ellipse cx="66" cy="104" rx="24" ry="36"/>
+              <ellipse cx="84" cy="72" rx="21" ry="17"/>
+              <ellipse cx="122" cy="74" rx="12" ry="11"/>
+              <ellipse cx="135" cy="99" rx="16" ry="13"/>
+              <ellipse cx="168" cy="84" rx="8" ry="10"/>
+              <ellipse cx="156" cy="122" rx="10" ry="13"/>
+              <ellipse cx="94" cy="140" rx="15" ry="10"/>
+              <ellipse cx="120" cy="125" rx="9" ry="8"/>
+              <circle cx="104" cy="176" r="4"/>
+              <circle cx="62" cy="150" r="3"/>
+              <circle cx="146" cy="160" r="3.5"/>
+            </g>
+          </g>
+          <circle cx="110" cy="110" r="88" fill="none" stroke="#3a4260" stroke-width="1"/>
+        </svg>
+        <p class="phase-name" id="phaseName">New Moon</p>
+        <p class="phase-sub" id="phaseSub">0% illuminated</p>
+      </div>
+      <div class="stats">
+        <div class="stat"><small data-i18n="stAge">Moon age</small><b id="sAge">0.0 days</b></div>
+        <div class="stat"><small data-i18n="stAngle">Angle from Sun</small><b id="sAngle">0°</b></div>
+        <div class="stat"><small data-i18n="stRise">Rises ≈</small><b id="sRise">06:00</b></div>
+        <div class="stat"><small data-i18n="stSet">Sets ≈</small><b id="sSet">18:00</b></div>
+        <div class="stat"><small data-i18n="stHigh">Highest in sky ≈</small><b id="sHigh">12:00</b></div>
+        <div class="stat"><small data-i18n="stBest">Best seen</small><b id="sBest">—</b></div>
+      </div>
+      <p class="explain" id="explain"></p>
+    </div>
+  </div>
+
+  <div class="controls card">
+    <div class="row">
+      <button id="play" type="button" aria-label="Pause animation">❚❚ Pause</button>
+      <div class="slider-wrap">
+        <input id="slider" type="range" min="0" max="29.53" step="0.01" value="0" aria-label="Day of the lunar cycle" data-i18n-aria="ariaSlider">
+        <span id="dayLabel">Day 0.0 of 29.5</span>
+      </div>
+    </div>
+    <div class="row">
+      <label class="muted"><span data-i18n="speed">Speed</span>
+        <select id="speed">
+          <option value="1" data-i18n="sp1">1 day / sec</option>
+          <option value="2" selected data-i18n="sp2">2 days / sec</option>
+          <option value="5" data-i18n="sp5">5 days / sec</option>
+        </select>
+      </label>
+      <span class="muted" data-i18n="hemisphere">Hemisphere</span>
+      <div class="seg" role="group" aria-label="Hemisphere" data-i18n-aria="ariaHemi">
+        <button type="button" id="hN" aria-pressed="true" data-i18n="north">North</button>
+        <button type="button" id="hS" aria-pressed="false" data-i18n="south">South</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="facing" checked> <span data-i18n="facingChk">Show Earth-facing half</span></label>
+      <span class="muted" style="font-size:.82rem" data-i18n="keysHint">Keys: space = play/pause, ← → = ±1 day</span>
+    </div>
+    <div class="strip" id="strip"></div>
+  </div>
+
+  <section>
+    <h2 data-i18n="tableTitle">The cycle at a glance</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th data-i18n="thPhase">Phase</th><th data-i18n="thDay">Day</th><th data-i18n="thAngle">Sun–Earth–Moon angle</th><th data-i18n="thLit">Lit portion</th><th data-i18n="thRise">Rises ≈</th><th data-i18n="thSet">Sets ≈</th><th data-i18n="thBest">Best seen</th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p class="muted" style="font-size:.85rem;margin-top:8px" data-i18n="tableNote">Rise and set times are idealised (equator-like, equinox): the Moon rises about 50 minutes later each day because it moves ~12° along its orbit while Earth spins.</p>
+  </section>
+
+  <section>
+    <h2 data-i18n="ideasTitle">Key ideas</h2>
+    <div class="ideas">
+      <div class="card idea"><h3><span class="n">1</span><span data-i18n="p1t">Half is always lit</span></h3><p data-i18n="p1p">Like Earth, the Moon has a day side and a night side. The Sun always lights the half that faces it, whatever the phase.</p></div>
+      <div class="card idea"><h3><span class="n">2</span><span data-i18n="p2t">Phases are a viewing angle</span></h3><p data-i18n="p2p">The phase is the overlap between the sunlit half and the half facing Earth. At new Moon they don't overlap; at full Moon they match exactly.</p></div>
+      <div class="card idea"><h3><span class="n">3</span><span data-i18n="p3t">Not Earth's shadow</span></h3><p data-i18n="p3p">A common myth. Earth's shadow only reaches the Moon during a lunar eclipse, which can happen only at full Moon.</p></div>
+      <div class="card idea"><h3><span class="n">4</span><span data-i18n="p4t">Same face, always</span></h3><p data-i18n="p4p">The Moon spins once per orbit (tidal locking), so the red dot always points at Earth. We never see the far side from here, though it gets just as much sunlight.</p></div>
+      <div class="card idea"><h3><span class="n">5</span><span data-i18n="p5t">29.5 days, not 27.3</span></h3><p data-i18n="p5p">The Moon circles Earth in 27.3 days relative to the stars. But Earth also moves around the Sun, so the Moon needs about 2 extra days to line up with the Sun again.</p></div>
+      <div class="card idea"><h3><span class="n">6</span><span data-i18n="p6t">No eclipse every month</span></h3><p data-i18n="p6p">The Moon's orbit is tilted about 5° to Earth's orbit, so at most new and full Moons it passes just above or below the Sun–Earth line.</p></div>
+    </div>
+  </section>
+  </div>
+
+  <div id="tab-advanced" role="tabpanel" aria-labelledby="tabBtn-advanced" hidden>
+    <div class="stage">
+      <div class="card">
+        <p class="card-title" data-i18n="helioTitle">Top view of Earth's orbit · the stars stay fixed</p>
+        <svg id="helio" viewBox="0 0 700 700" role="img" aria-label="Earth orbiting the Sun with the Moon orbiting Earth" data-i18n-aria="ariaHelio">
+          <defs>
+            <radialGradient id="hSunGlow" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0" stop-color="#fff6d0"/>
+              <stop offset="0.3" stop-color="#ffd36b" stop-opacity=".9"/>
+              <stop offset="0.6" stop-color="#ffaa3c" stop-opacity=".22"/>
+              <stop offset="1" stop-color="#ff9a2a" stop-opacity="0"/>
+            </radialGradient>
+            <marker id="hArr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M0 0 L10 5 L0 10 z" fill="#8892b0"/>
+            </marker>
+          </defs>
+          <g id="hStars"></g>
+          <circle cx="350" cy="350" r="110" fill="url(#hSunGlow)"/>
+          <circle cx="350" cy="350" r="270" fill="none" stroke="#3a4468" stroke-width="1.5" stroke-dasharray="4 6"/>
+          <g id="hMonths" text-anchor="middle" dominant-baseline="central"></g>
+          <path id="hOrbitArrow" fill="none" stroke="#8892b0" stroke-width="1.5" marker-end="url(#hArr)"/>
+          <text x="16" y="26" fill="#8892b0" font-size="13" data-i18n="helioCaption">Earth's orbit: 365.25 days · Moon: 29.5 days per phase cycle</text>
+          <path id="hEarthArc" fill="none" stroke="#5cc8ff" stroke-width="3.5" stroke-linecap="round" opacity=".8"/>
+          <line id="hSunLine" stroke="#ffcf5c" stroke-width="1.2" stroke-dasharray="3 5" opacity=".6"/>
+          <g id="hGhost" opacity=".5">
+            <line id="hGhostLine" stroke="#b18cff" stroke-width="1.2" stroke-dasharray="3 5"/>
+            <circle id="hGhostEarth" r="9" fill="#2b78c9"/>
+            <circle id="hGhostMoon" fill="#cfd6ea"/>
+            <text id="hGhostLabel" fill="#c9b3ff" font-size="12" text-anchor="middle" data-i18n="ghostLabel">last new Moon</text>
+          </g>
+          <polyline id="hTrail" fill="none" stroke="#cfd6ea" stroke-width="1.3" stroke-linejoin="round" opacity=".6"/>
+          <circle id="hMoonOrbit" fill="none" stroke="#5a6488" stroke-width="1" stroke-dasharray="2 3"/>
+          <circle cx="350" cy="350" r="26" fill="#fff1bf"/>
+          <text x="350" y="354" fill="#6b4a00" font-size="11" font-weight="700" text-anchor="middle" data-i18n="sun">SUN</text>
+          <g id="hEarth">
+            <circle r="12" fill="#13284d" stroke="#3a5a8a" stroke-width=".8"/>
+            <path d="M0 -12 A12 12 0 0 1 0 12 Z" fill="#3d8fe0"/>
+          </g>
+          <g id="hMoon">
+            <circle id="hMoonDark" fill="#2a3045"/>
+            <path id="hMoonLit" fill="#f3eedb"/>
+          </g>
+          <text id="hEarthLabel" fill="#e9ecf6" font-size="13" font-weight="600" text-anchor="middle" stroke="#0e1324" stroke-width="4" paint-order="stroke" data-i18n="earth">Earth</text>
+        </svg>
+        <div class="legend">
+          <span><i class="ln trail"></i><span data-i18n="legTrail">Moon's path (last 60 days)</span></span>
+          <span><i class="ln arc"></i><span data-i18n="legArc">Earth's progress since last new Moon</span></span>
+          <span><i class="sw ghost"></i><span data-i18n="legGhost">Where Earth was at last new Moon</span></span>
+          <span data-i18n="legScale">Sizes and Moon distance exaggerated · Moon phases illustrative, not for a specific year</span>
+        </div>
+      </div>
+
+      <div class="card view">
+        <div>
+          <p class="card-title" data-i18n="zoomTitle">Close-up around Earth</p>
+          <svg id="zoom" viewBox="0 0 260 260" role="img" aria-label="Close-up of Earth and Moon with the direction to the Sun" data-i18n-aria="ariaZoom">
+            <defs>
+              <marker id="zArr" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M0 0 L10 5 L0 10 z" fill="#5cc8ff"/>
+              </marker>
+            </defs>
+            <g id="zStars"></g>
+            <line id="zStarLine" x1="130" y1="130" stroke="#b18cff" stroke-width="1.6" stroke-dasharray="4 4"/>
+            <text id="zStarMark" fill="#b18cff" font-size="13" text-anchor="middle" dominant-baseline="central">★</text>
+            <line id="zSunLine" x1="130" y1="130" stroke="#ffcf5c" stroke-width="1.6" stroke-dasharray="4 4"/>
+            <circle id="zSunMark" r="6" fill="#ffcf5c"/>
+            <circle cx="130" cy="130" r="92" fill="none" stroke="#3a4468" stroke-width="1" stroke-dasharray="2 4"/>
+            <polyline id="zSpiral" fill="none" stroke="#5cc8ff" stroke-width="2" stroke-linecap="round" marker-end="url(#zArr)"/>
+            <g id="zSidereal">
+              <circle id="zSidDot" r="3.5" fill="#5cc8ff"/>
+              <text id="zSidText" fill="#5cc8ff" font-size="10" text-anchor="middle" stroke="#0e1324" stroke-width="3" paint-order="stroke" data-i18n="zSid">27.3 d</text>
+            </g>
+            <g id="zEarth">
+              <circle r="15" fill="#13284d" stroke="#3a5a8a" stroke-width=".8"/>
+              <path d="M0 -15 A15 15 0 0 1 0 15 Z" fill="#3d8fe0"/>
+            </g>
+            <g id="zMoon">
+              <circle r="9" fill="#2a3045" stroke="#3a4260" stroke-width=".8"/>
+              <path d="M0 -9 A9 9 0 0 1 0 9 Z" fill="#f3eedb"/>
+            </g>
+          </svg>
+          <div class="zlegend">
+            <span><i class="ln sun"></i><span data-i18n="zlSun">Direction to the Sun now</span></span>
+            <span><i class="ln star"></i><span data-i18n="zlStar">Direction to the Sun at last new Moon (fixed vs. stars)</span></span>
+            <span><i class="ln spiral"></i><span data-i18n="zlSpiral">How far the Moon has turned since then</span></span>
+          </div>
+        </div>
+        <div class="phase-row">
+          <svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19" fill="#222839" stroke="#3a4260" stroke-width=".8"/><path id="aPhaseIcon" fill="#f3eedb"/></svg>
+          <div><b id="aPhaseName">New Moon</b><small id="aPhaseSub">age 0.0 days</small></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><small data-i18n="stTurned">Moon turned vs. stars</small><b id="aTurned">0°</b></div>
+          <div class="stat"><small data-i18n="stEarthMoved">Earth moved around Sun</small><b id="aEarthMoved">0°</b></div>
+          <div class="stat"><small data-i18n="stDate">Date</small><b id="aDoy">0</b></div>
+          <div class="stat"><small data-i18n="stMonths">Lunar months so far</small><b id="aMonths">0</b></div>
+        </div>
+        <p class="explain" id="aExplain"></p>
+      </div>
+    </div>
+
+    <div class="controls card">
+      <div class="row">
+        <button id="aPlay" type="button" aria-label="Pause animation">❚❚ Pause</button>
+        <div class="slider-wrap">
+          <input id="aSlider" type="range" min="0" max="365.25" step="0.05" value="0" aria-label="Date in the year" data-i18n-aria="ariaASlider">
+          <span id="aDayLabel">1 January · year 1</span>
+        </div>
+      </div>
+      <div class="row">
+        <button type="button" id="aPrevNew" data-i18n="prevNew">⏮ Previous new Moon</button>
+        <button type="button" id="aNextNew" data-i18n="nextNew">Next new Moon ⏭</button>
+        <button type="button" id="aSid" data-i18n="sidBtn">+ 27.3 days (one turn vs. stars)</button>
+      </div>
+      <div class="row">
+        <label class="muted"><span data-i18n="speed">Speed</span>
+          <select id="aSpeed">
+            <option value="1" data-i18n="sp1">1 day / sec</option>
+            <option value="5" data-i18n="sp5">5 days / sec</option>
+            <option value="10" selected data-i18n="sp10">10 days / sec</option>
+            <option value="20" data-i18n="sp20">20 days / sec</option>
+            <option value="40" data-i18n="sp40">40 days / sec</option>
+          </select>
+        </label>
+        <div class="slider-wrap" style="flex-basis:280px">
+          <span class="muted" data-i18n="moonDistance">Moon distance</span>
+          <input id="aScale" type="range" min="1" max="60" step="1" value="40" aria-label="Moon orbit exaggeration" data-i18n-aria="ariaAScale">
+          <span id="aScaleLabel">×40</span>
+        </div>
+        <label class="chk"><input type="checkbox" id="aTrail" checked> <span data-i18n="chkTrail">Moon's path</span></label>
+        <label class="chk"><input type="checkbox" id="aGhost" checked> <span data-i18n="chkGhost">Last new Moon</span></label>
+      </div>
+      <p class="note" id="aScaleNote" style="margin:0"></p>
+    </div>
+
+    <section>
+      <h2 data-i18n="ideasTitle">Key ideas</h2>
+      <div class="ideas">
+        <div class="card idea"><h3><span class="n">1</span><span data-i18n="a1t">Two kinds of month</span></h3><p data-i18n="a1p">The Moon makes one full turn against the stars in 27.3 days (the sidereal month). But by then Earth has moved about 27° around the Sun, so the Moon needs about 2.2 more days to be back between Earth and the Sun. New Moon to new Moon is 29.5 days (the synodic month). Try the “+ 27.3 days” button right after a new Moon.</p></div>
+        <div class="card idea"><h3><span class="n">2</span><span data-i18n="a2t">The real path never loops</span></h3><p data-i18n="a2p">The Moon is only 1/389 of the way to the Sun and moves around Earth at ~1 km/s, while Earth races around the Sun at ~30 km/s. So the Moon's true path around the Sun is a gently wavy circle that always bends toward the Sun. Loops appear here only when the Moon distance is exaggerated more than ~29×.</p></div>
+        <div class="card idea"><h3><span class="n">3</span><span data-i18n="a3t">12.4 lunar months a year</span></h3><p data-i18n="a3p">365.25 ÷ 29.53 ≈ 12.37. Twelve lunar months make only 354 days, which is why purely lunar calendars drift ~11 days a year against the seasons, and why some years have 13 full Moons.</p></div>
+        <div class="card idea"><h3><span class="n">4</span><span data-i18n="a4t">Everything turns the same way</span></h3><p data-i18n="a4p">Seen from above the North Pole, Earth orbits the Sun, Earth spins, and the Moon orbits Earth all anticlockwise. That shared direction is why the Moon drifts east across the sky night after night.</p></div>
+        <div class="card idea"><h3><span class="n">5</span><span data-i18n="a5t">Same phases, new view</span></h3><p data-i18n="a5p">The close-up uses the same idea as the Phases tab: the Sun lights one half of the Moon. Here you also see that the direction to the Sun slowly rotates as Earth travels, and the phases follow that rotating direction, not the stars.</p></div>
+        <div class="card idea"><h3><span class="n">6</span><span data-i18n="a6t">Not to scale</span></h3><p data-i18n="a6p">At true scale Earth would be a speck 0.02 px wide at this size, and the Moon's orbit would be smaller than one pixel. Set Moon distance to ×1 to see how tightly the Moon really hugs Earth's path.</p></div>
+      </div>
+    </section>
+  </div>
+
+  <footer data-i18n="footer">
+    Scale note: in reality the Moon is about 30 Earth-diameters away and the Sun is ~390 times farther still, so sunlight arrives in effectively parallel rays, as drawn here.
+  </footer>
+</div>
+
+<script>
+(() => {
+  const SYN = 29.530589;
+  const TAU = Math.PI * 2;
+  const NS = 'http://www.w3.org/2000/svg';
+  const EX = 440, EY = 310, R = 205, MR = 20, LR = 255;
+
+  const PHASES = {
+    en: [
+      { name: 'New Moon', best: 'Not visible',
+        text: 'The Moon sits between Earth and the Sun. Its sunlit half faces away from us, so we see only the dark night side, and it is lost in the Sun’s glare anyway. If the line-up is exact, the Moon’s shadow falls on Earth: a solar eclipse.' },
+      { name: 'Waxing Crescent', best: 'After sunset',
+        text: 'The Moon has moved a little east of the Sun along its orbit. A thin edge of the sunlit half now turns toward us, a crescent that grows (“waxes”) each evening, low in the western sky after sunset.' },
+      { name: 'First Quarter', best: 'Evening',
+        text: 'A quarter of the way around its orbit, the Moon sits at a right angle to the Sun–Earth line. We see the day/night boundary side-on, so exactly half the disc is lit. “Quarter” refers to the orbit, not the shape.' },
+      { name: 'Waxing Gibbous', best: 'Evening–late night',
+        text: 'More than half the disc is lit, and the lit part keeps growing. Most of the sunlit hemisphere is now turned toward Earth.' },
+      { name: 'Full Moon', best: 'All night',
+        text: 'Earth is between the Sun and the Moon, so the whole sunlit half faces us. The Moon rises as the Sun sets and stays up all night. If the line-up is exact, Earth’s shadow falls on the Moon: a lunar eclipse.' },
+      { name: 'Waning Gibbous', best: 'Late night–morning',
+        text: 'After full Moon the lit portion shrinks (“wanes”). The Moon rises later each night, roughly 50 minutes per day, and lingers into the morning sky.' },
+      { name: 'Last Quarter', best: 'Before dawn',
+        text: 'Three-quarters of the way around, at a right angle on the other side of Earth. Again half the disc is lit, but it is the opposite half from first quarter.' },
+      { name: 'Waning Crescent', best: 'Before sunrise',
+        text: 'The Moon is closing in on the Sun again. Only a thin sliver of the sunlit side still faces us, low in the eastern sky before dawn. Then the cycle starts over.' },
+    ],
+    pl: [
+      { name: 'Nów', best: 'Niewidoczny',
+        text: 'Księżyc znajduje się między Ziemią a Słońcem. Jego oświetlona połowa jest zwrócona od nas, więc widzimy tylko ciemną, nocną stronę, a do tego ginie on w blasku Słońca. Jeśli ustawienie jest dokładne, cień Księżyca pada na Ziemię: to zaćmienie Słońca.' },
+      { name: 'Przybywający sierp', best: 'Po zachodzie Słońca',
+        text: 'Księżyc przesunął się po orbicie nieco na wschód od Słońca. W naszą stronę obraca się teraz wąski skrawek oświetlonej połowy: sierp, który z każdym wieczorem rośnie. Widać go nisko na zachodzie po zachodzie Słońca.' },
+      { name: 'Pierwsza kwadra', best: 'Wieczorem',
+        text: 'Po przebyciu ćwierci orbity Księżyc stoi pod kątem prostym do linii Słońce–Ziemia. Granicę dnia i nocy widzimy z boku, więc oświetlona jest dokładnie połowa tarczy. „Kwadra” odnosi się do ćwierci orbity, a nie do kształtu.' },
+      { name: 'Przybywający garb', best: 'Wieczorem i w nocy',
+        text: 'Oświetlona jest ponad połowa tarczy i ta część wciąż rośnie. Większość oświetlonej półkuli jest już zwrócona do Ziemi.' },
+      { name: 'Pełnia', best: 'Całą noc',
+        text: 'Ziemia znajduje się między Słońcem a Księżycem, więc cała oświetlona połowa jest zwrócona do nas. Księżyc wschodzi, gdy Słońce zachodzi, i świeci przez całą noc. Jeśli ustawienie jest dokładne, cień Ziemi pada na Księżyc: to zaćmienie Księżyca.' },
+      { name: 'Ubywający garb', best: 'Późną nocą i rano',
+        text: 'Po pełni oświetlona część maleje. Księżyc wschodzi każdej nocy później, mniej więcej o 50 minut dziennie, i pozostaje na niebie aż do rana.' },
+      { name: 'Ostatnia kwadra', best: 'Przed świtem',
+        text: 'Po trzech czwartych orbity Księżyc znów stoi pod kątem prostym, tym razem po drugiej stronie Ziemi. Znów oświetlona jest połowa tarczy, ale przeciwna niż w pierwszej kwadrze.' },
+      { name: 'Ubywający sierp', best: 'Przed wschodem Słońca',
+        text: 'Księżyc znów zbliża się do Słońca. W naszą stronę zwrócony jest już tylko wąski sierp oświetlonej strony, widoczny nisko na wschodzie przed świtem. Potem cykl zaczyna się od nowa.' },
+    ],
+  };
+
+  const state = {
+    day: 0,
+    playing: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    speed: 2,
+    south: false,
+    facing: true,
+    k: -1,
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, attrs = {}, parent) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (parent) parent.appendChild(n);
+    return n;
+  };
+  const norm = (a) => ((a % TAU) + TAU) % TAU;
+  const f1 = (n) => n.toFixed(1);
+
+  // ---------- Language ----------
+  let lang = 'en';
+  const PH = () => PHASES[lang];
+  const nf = (n, d = 1) => { const v = n.toFixed(d); return lang === 'pl' ? v.replace('.', ',') : v; };
+
+  // English static text lives in the HTML; capture it so we can switch back.
+  const STATIC_EN = {};
+  document.querySelectorAll('[data-i18n]').forEach((n) => { STATIC_EN[n.dataset.i18n] = n.textContent; });
+  document.querySelectorAll('[data-i18n-aria]').forEach((n) => { STATIC_EN[n.dataset.i18nAria] = n.getAttribute('aria-label'); });
+
+  const STATIC_PL = {
+    h1: 'Skąd się biorą fazy Księżyca',
+    intro: 'Słońce zawsze oświetla dokładnie połowę Księżyca. Gdy Księżyc okrąża Ziemię co 29,5 dnia, widzimy coraz inną część tej oświetlonej połowy. Naciśnij Start, przesuń suwak albo kliknij fazę, aby zobaczyć, jak ustawiają się Słońce, Ziemia i Księżyc.',
+    langAria: 'Język', ariaTabs: 'Widoki', tabPhases: 'Fazy', tabAdv: 'Wokół Słońca', badge: 'Zaawansowane',
+    orbitTitle: 'Widok z góry: patrzymy na biegun północny',
+    ariaOrbit: 'Schemat Księżyca krążącego wokół Ziemi; światło słoneczne pada z lewej',
+    sun: 'SŁOŃCE', farAway: 'daleko', sunlight: 'światło słoneczne →',
+    legLit: 'Oświetlona połowa (zawsze zwrócona do Słońca)', legFace: 'Połowa zwrócona do Ziemi (to, co widzimy)',
+    legDot: 'To samo miejsce zawsze zwrócone do Ziemi', notToScale: 'Nie w skali',
+    ariaSky: 'Księżyc widziany z Ziemi',
+    stAge: 'Wiek Księżyca', stAngle: 'Kąt od Słońca', stRise: 'Wschód ≈', stSet: 'Zachód ≈', stHigh: 'Najwyżej na niebie ≈', stBest: 'Najlepiej widoczny',
+    ariaSlider: 'Dzień cyklu księżycowego',
+    speed: 'Prędkość', sp1: '1 dzień / s', sp2: '2 dni / s', sp5: '5 dni / s', sp10: '10 dni / s', sp20: '20 dni / s', sp40: '40 dni / s',
+    hemisphere: 'Półkula', ariaHemi: 'Półkula', north: 'Północna', south: 'Południowa',
+    facingChk: 'Pokaż połowę zwróconą do Ziemi', keysHint: 'Klawisze: spacja = start/pauza, ← → = ±1 dzień',
+    tableTitle: 'Cykl w skrócie',
+    thPhase: 'Faza', thDay: 'Dzień', thAngle: 'Kąt Słońce–Ziemia–Księżyc', thLit: 'Oświetlenie', thRise: 'Wschód ≈', thSet: 'Zachód ≈', thBest: 'Najlepiej widoczny',
+    tableNote: 'Godziny wschodu i zachodu są uproszczone (jak na równiku, w czasie równonocy). Księżyc wschodzi każdego dnia około 50 minut później, bo w ciągu doby przesuwa się po orbicie o ok. 12°, podczas gdy Ziemia się obraca.',
+    ideasTitle: 'Najważniejsze',
+    p1t: 'Połowa jest zawsze oświetlona', p1p: 'Tak jak Ziemia, Księżyc ma stronę dzienną i nocną. Słońce zawsze oświetla tę połowę, która jest do niego zwrócona, niezależnie od fazy.',
+    p2t: 'Faza to kwestia kąta patrzenia', p2p: 'Faza to część wspólna oświetlonej połowy i połowy zwróconej do Ziemi. W nowiu w ogóle się nie pokrywają, a w pełni pokrywają się całkowicie.',
+    p3t: 'To nie cień Ziemi', p3p: 'Popularny mit. Cień Ziemi pada na Księżyc tylko podczas zaćmienia Księżyca, które może się zdarzyć wyłącznie w pełni.',
+    p4t: 'Zawsze ta sama strona', p4p: 'Księżyc obraca się wokół własnej osi raz na jedno okrążenie (obrót synchroniczny), więc czerwona kropka zawsze wskazuje Ziemię. Z Ziemi nigdy nie widzimy jego drugiej strony, choć dostaje ona tyle samo światła.',
+    p5t: '29,5 dnia, a nie 27,3', p5p: 'Względem gwiazd Księżyc okrąża Ziemię w 27,3 dnia. Ale Ziemia w tym czasie przesuwa się wokół Słońca, więc Księżyc potrzebuje ok. 2 dodatkowych dni, by znów ustawić się tak samo względem Słońca.',
+    p6t: 'Zaćmienie nie co miesiąc', p6p: 'Orbita Księżyca jest nachylona o ok. 5° do orbity Ziemi, więc podczas większości nowiów i pełni Księżyc przechodzi nieco powyżej lub poniżej linii Słońce–Ziemia.',
+    helioTitle: 'Orbita Ziemi z góry · gwiazdy pozostają nieruchome',
+    ariaHelio: 'Ziemia krążąca wokół Słońca i Księżyc krążący wokół Ziemi',
+    helioCaption: 'Orbita Ziemi: 365,25 dnia · Księżyc: 29,5 dnia na cykl faz',
+    ghostLabel: 'ostatni nów', earth: 'Ziemia',
+    legTrail: 'Droga Księżyca (ostatnie 60 dni)', legArc: 'Droga Ziemi od ostatniego nowiu', legGhost: 'Położenie Ziemi w ostatnim nowiu',
+    legScale: 'Rozmiary i odległość Księżyca powiększone · fazy poglądowe, nie dla konkretnego roku',
+    zoomTitle: 'Zbliżenie na okolice Ziemi', ariaZoom: 'Zbliżenie Ziemi i Księżyca z kierunkiem do Słońca', zSid: '27,3 d',
+    zlSun: 'Kierunek do Słońca teraz', zlStar: 'Kierunek do Słońca w ostatnim nowiu (stały względem gwiazd)', zlSpiral: 'O ile obrócił się Księżyc od tego czasu',
+    stTurned: 'Obrót Księżyca wzgl. gwiazd', stEarthMoved: 'Ruch Ziemi wokół Słońca', stDate: 'Data', stMonths: 'Miesiące księżycowe',
+    ariaASlider: 'Data w roku', prevNew: '⏮ Poprzedni nów', nextNew: 'Następny nów ⏭', sidBtn: '+ 27,3 dnia (jeden obrót wzgl. gwiazd)',
+    moonDistance: 'Odległość Księżyca', ariaAScale: 'Powiększenie orbity Księżyca', chkTrail: 'Droga Księżyca', chkGhost: 'Ostatni nów',
+    a1t: 'Dwa rodzaje miesiąca', a1p: 'Księżyc wykonuje pełny obrót względem gwiazd w 27,3 dnia (miesiąc gwiazdowy). W tym czasie Ziemia przesuwa się jednak o ok. 27° wokół Słońca, więc Księżyc potrzebuje jeszcze ok. 2,2 dnia, by znów znaleźć się między Ziemią a Słońcem. Od nowiu do nowiu mija 29,5 dnia (miesiąc synodyczny). Wypróbuj przycisk „+ 27,3 dnia” zaraz po nowiu.',
+    a2t: 'Prawdziwa droga nie tworzy pętli', a2p: 'Księżyc jest oddalony od Ziemi zaledwie o 1/389 odległości do Słońca i krąży wokół niej z prędkością ok. 1 km/s, podczas gdy Ziemia pędzi wokół Słońca z prędkością ok. 30 km/s. Dlatego prawdziwa droga Księżyca wokół Słońca to lekko falujący okrąg, zawsze wygięty w stronę Słońca. Pętle pojawiają się tu tylko przy powiększeniu odległości ponad ~29×.',
+    a3t: '12,4 miesiąca księżycowego w roku', a3p: '365,25 ÷ 29,53 ≈ 12,37. Dwanaście miesięcy księżycowych to tylko 354 dni, dlatego czysto księżycowe kalendarze przesuwają się o ok. 11 dni rocznie względem pór roku, a w niektórych latach wypada 13 pełni.',
+    a4t: 'Wszystko kręci się w tę samą stronę', a4p: 'Patrząc znad bieguna północnego: Ziemia okrąża Słońce, Ziemia obraca się wokół osi i Księżyc okrąża Ziemię – wszystko przeciwnie do ruchu wskazówek zegara. Dlatego Księżyc z nocy na noc przesuwa się na niebie na wschód.',
+    a5t: 'Te same fazy, nowy widok', a5p: 'Zbliżenie opiera się na tej samej zasadzie co zakładka Fazy: Słońce oświetla połowę Księżyca. Tutaj widać też, że kierunek do Słońca powoli się obraca, gdy Ziemia wędruje po orbicie, a fazy podążają za tym kierunkiem, a nie za gwiazdami.',
+    a6t: 'Nie w skali', a6p: 'W prawdziwej skali Ziemia byłaby tu punkcikiem o szerokości 0,02 px, a orbita Księżyca miałaby mniej niż piksel. Ustaw odległość Księżyca na ×1, aby zobaczyć, jak blisko drogi Ziemi naprawdę biegnie Księżyc.',
+    footer: 'Uwaga o skali: w rzeczywistości Księżyc jest oddalony o ok. 30 średnic Ziemi, a Słońce jest jeszcze ok. 390 razy dalej, więc światło słoneczne dociera w praktycznie równoległych promieniach, tak jak na rysunku.',
+  };
+
+  const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const MONTHS_PL = ['Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec', 'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'];
+  const MONTHS_PL_GEN = ['stycznia', 'lutego', 'marca', 'kwietnia', 'maja', 'czerwca', 'lipca', 'sierpnia', 'września', 'października', 'listopada', 'grudnia'];
+  const MONTHS_PL_SHORT = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
+
+  const STR = {
+    en: {
+      docTitle: 'Lunar Phases',
+      metaDesc: 'An interactive explanation of the lunar cycle showing how the Sun, Earth and Moon are positioned for each phase.',
+      pause: '❚❚ Pause', play: '▶ Play', ariaPause: 'Pause animation', ariaPlay: 'Play animation',
+      viewTitle: (south) => `Seen from Earth · ${south ? 'Southern' : 'Northern'} Hemisphere`,
+      illum: (pc) => `${pc}% illuminated`, waxing: ' · waxing (growing)', waning: ' · waning (shrinking)',
+      days: (d) => `${d} days`,
+      east: (d) => `${d}° east`, west: (d) => `${d}° west`,
+      dayValue: (d, name) => `Day ${d}, ${name}`, dayLabel: (d) => `Day ${d} of 29.5`,
+      dayShort: (d) => `day ${d}`, jumpTo: (name) => `Jump to ${name}`,
+      noon: 'Noon', pm6: '6 pm', midnight: 'Midnight', am6: '6 am',
+      months: MONTHS_EN,
+      aPhaseSub: (a) => `Moon age ${a} of 29.5 days`,
+      aDoy: (dom, m, n) => `${dom} ${MONTHS_EN[m].slice(0, 3)} · day ${n}`,
+      aDayLabel: (dom, m, y) => `${dom} ${MONTHS_EN[m]} · year ${y}`,
+      aValue: (dom, m, name) => `${dom} ${MONTHS_EN[m]}, ${name}`,
+      explainNew: 'New Moon: the Moon is lined up between Earth and the Sun. Watch the yellow line (direction to the Sun) slowly turn as Earth moves along its orbit, while the violet line stays fixed against the stars.',
+      explainBefore: (age, deg, e) => `Since the last new Moon ${age} days ago, the Moon has turned ${deg}° against the stars, while Earth carried it ${e}° around the Sun. After 27.3 days it will have turned a full 360°.`,
+      explainAfter: (e, d) => `The Moon has turned a full 360° against the stars (one sidereal month), but it isn't new yet. Earth has moved ${e}° around the Sun, so the direction to the Sun has turned too. The Moon needs ${d} more days to catch up.`,
+      noteTrue: 'True scale: the Moon’s orbit is less than a pixel wide here, so the Moon’s path sits right on top of Earth’s.',
+      noteLoops: (x, l) => `At ×${x} the Moon’s path makes loops. That only happens because the distance is exaggerated more than ~${l}×. The real path never loops.`,
+      noteWiggle: (x) => `At ×${x} the Moon’s path only wiggles and always bends toward the Sun, as the real one does.`,
+    },
+    pl: {
+      docTitle: 'Fazy Księżyca',
+      metaDesc: 'Interaktywne wyjaśnienie cyklu księżycowego: jak ustawione są Słońce, Ziemia i Księżyc w każdej fazie.',
+      pause: '❚❚ Pauza', play: '▶ Start', ariaPause: 'Wstrzymaj animację', ariaPlay: 'Uruchom animację',
+      viewTitle: (south) => `Widok z Ziemi · półkula ${south ? 'południowa' : 'północna'}`,
+      illum: (pc) => `${pc}% oświetlenia`, waxing: ' · przybywa', waning: ' · ubywa',
+      days: (d) => `${d} dnia`,
+      east: (d) => `${d}° na wschód`, west: (d) => `${d}° na zachód`,
+      dayValue: (d, name) => `Dzień ${d}, ${name}`, dayLabel: (d) => `Dzień ${d} z 29,5`,
+      dayShort: (d) => `dzień ${d}`, jumpTo: (name) => `Przejdź do: ${name}`,
+      noon: 'Południe', pm6: '18:00', midnight: 'Północ', am6: '6:00',
+      months: MONTHS_PL,
+      aPhaseSub: (a) => `Wiek Księżyca: ${a} z 29,5 dnia`,
+      aDoy: (dom, m, n) => `${dom} ${MONTHS_PL_SHORT[m]} · dzień ${n}`,
+      aDayLabel: (dom, m, y) => `${dom} ${MONTHS_PL_GEN[m]} · rok ${y}`,
+      aValue: (dom, m, name) => `${dom} ${MONTHS_PL_GEN[m]}, ${name}`,
+      explainNew: 'Nów: Księżyc stoi w jednej linii między Ziemią a Słońcem. Zobacz, jak żółta linia (kierunek do Słońca) powoli się obraca, gdy Ziemia porusza się po orbicie, a fioletowa linia pozostaje nieruchoma względem gwiazd.',
+      explainBefore: (age, deg, e) => `Od ostatniego nowiu (${age} dnia temu) Księżyc obrócił się o ${deg}° względem gwiazd, a Ziemia przeniosła go o ${e}° wokół Słońca. Po 27,3 dnia obróci się o pełne 360°.`,
+      explainAfter: (e, d) => `Księżyc obrócił się już o pełne 360° względem gwiazd (miesiąc gwiazdowy), ale to jeszcze nie nów. Ziemia przesunęła się o ${e}° wokół Słońca, więc kierunek do Słońca też się obrócił. Księżyc potrzebuje jeszcze ${d} dnia, aby go dogonić.`,
+      noteTrue: 'Prawdziwa skala: orbita Księżyca ma tu mniej niż piksel, więc droga Księżyca nakłada się na drogę Ziemi.',
+      noteLoops: (x, l) => `Przy ×${x} droga Księżyca tworzy pętle. Dzieje się tak tylko dlatego, że odległość jest powiększona ponad ~${l}×. Prawdziwa droga nigdy nie tworzy pętli.`,
+      noteWiggle: (x) => `Przy ×${x} droga Księżyca tylko lekko faluje i zawsze wygina się w stronę Słońca, tak jak prawdziwa.`,
+    },
+  };
+  const T = (key, ...args) => { const v = key in STR[lang] ? STR[lang][key] : STR.en[key]; return typeof v === 'function' ? v(...args) : v; };
+
+  // Shape of the lit part of the Moon as seen from Earth (northern view).
+  // theta = elongation: 0 new, PI/2 first quarter, PI full, 3PI/2 last quarter.
+  function phasePath(cx, cy, r, theta) {
+    theta = norm(theta);
+    const c = Math.cos(theta);
+    const rx = Math.abs(c) * r;
+    const top = `${f1(cx)} ${f1(cy - r)}`, bot = `${f1(cx)} ${f1(cy + r)}`;
+    if (theta < Math.PI) {
+      return `M${top} A${r} ${r} 0 0 1 ${bot} A${f1(rx)} ${r} 0 0 ${c > 0 ? 0 : 1} ${top}Z`;
+    }
+    return `M${top} A${r} ${r} 0 0 0 ${bot} A${f1(rx)} ${r} 0 0 ${c > 0 ? 1 : 0} ${top}Z`;
+  }
+  const viewTheta = (theta) => (state.south ? TAU - norm(theta) : theta);
+
+  function miniMoon(svg, cx, cy, r, theta) {
+    cx = +cx; cy = +cy;
+    el('circle', { cx, cy, r, fill: '#222839', stroke: '#3a4260', 'stroke-width': 0.8 }, svg);
+    return el('path', { d: phasePath(cx, cy, r, viewTheta(theta)), fill: '#f3eedb', 'data-theta': theta }, svg);
+  }
+
+  function fmtTime(h) {
+    h = ((h % 24) + 24) % 24;
+    let m = Math.round(h * 4) * 15;
+    m %= 24 * 60;
+    return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  }
+  const timesFor = (day) => {
+    const shift = (24 * day) / SYN;
+    return { rise: fmtTime(6 + shift), high: fmtTime(12 + shift), set: fmtTime(18 + shift) };
+  };
+  const angleText = (theta) => {
+    const deg = Math.round((norm(theta) * 180) / Math.PI) % 360;
+    if (deg === 0) return '0°';
+    if (deg === 180) return '180°';
+    return deg < 180 ? T('east', deg) : T('west', 360 - deg);
+  };
+
+  // Seeded random for stable starfields
+  function rng(seed) {
+    return () => {
+      seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // ---------- Static scene ----------
+  function buildScene() {
+    const rand = rng(7);
+    const stars = $('stars');
+    for (let i = 0; i < 140; i++) {
+      const x = 150 + rand() * 630, y = rand() * 620;
+      el('circle', { cx: f1(x), cy: f1(y), r: f1(0.4 + rand() * 1.1), fill: '#fff', opacity: f1(0.2 + rand() * 0.6) }, stars);
+    }
+    const r2 = rng(11);
+    const sky = $('skyStars');
+    for (let i = 0; i < 40; i++) {
+      el('circle', { cx: f1(r2() * 220), cy: f1(r2() * 220), r: f1(0.3 + r2() * 0.8), fill: '#fff', opacity: f1(0.2 + r2() * 0.5) }, sky);
+    }
+
+    const rays = $('rays');
+    [90, 150, 210, 410, 470, 530].forEach((y) => el('line', { x1: 108, y1: y, x2: 152, y2: y, 'marker-end': 'url(#arrSun)' }, rays));
+
+    const op = $('orbitPath');
+    op.setAttribute('cx', EX); op.setAttribute('cy', EY); op.setAttribute('r', R);
+
+    // Orbit direction arrow (counter-clockwise seen from above the North Pole)
+    const a1 = (-62 * Math.PI) / 180, a2 = (-42 * Math.PI) / 180;
+    const p = (a, rr) => `${f1(EX + rr * Math.cos(a))} ${f1(EY - rr * Math.sin(a))}`;
+    $('orbitArrow').setAttribute('d', `M${p(a1, R + 14)} A${R + 14} ${R + 14} 0 0 0 ${p(a2, R + 14)}`);
+
+    // Earth
+    $('earthBody').setAttribute('cx', EX); $('earthBody').setAttribute('cy', EY);
+    $('earthPole').setAttribute('cx', EX); $('earthPole').setAttribute('cy', EY);
+    $('earthNight').setAttribute('d', `M${EX} ${EY - 42} A42 42 0 0 1 ${EX} ${EY + 42} Z`);
+    $('earthLand').setAttribute('d',
+      `M${EX - 18} ${EY - 30} q14 -6 22 4 q8 10 -2 18 q-12 6 -8 18 q2 12 -12 10 q-10 -4 -6 -16 q2 -10 -8 -14 q-6 -12 14 -20z` +
+      `M${EX + 14} ${EY + 4} q12 -4 16 6 q2 12 -10 16 q-10 0 -8 -10z`);
+    const s1 = (25 * Math.PI) / 180, s2 = (75 * Math.PI) / 180;
+    const sp = (a) => `${f1(EX + 54 * Math.cos(a))} ${f1(EY - 54 * Math.sin(a))}`;
+    $('earthSpin').setAttribute('d', `M${sp(s1)} A54 54 0 0 0 ${sp(s2)}`);
+
+  }
+
+  // Parts of the scene that contain translated text; rebuilt on language change.
+  function buildLocalized() {
+    const times = $('earthTimes');
+    times.textContent = '';
+    [[T('noon'), 180], [T('pm6'), 270], [T('midnight'), 0], [T('am6'), 90]].forEach(([t, deg]) => {
+      const a = (deg * Math.PI) / 180, rr = deg % 180 === 0 ? 80 : 70;
+      el('text', { x: f1(EX + rr * Math.cos(a)), y: f1(EY - rr * Math.sin(a) + 4) }, times).textContent = t;
+    });
+
+    // Orbit labels with mini phase icons
+    const labels = $('labels');
+    labels.textContent = '';
+    PH().forEach((ph, k) => {
+      const theta = (k * TAU) / 8;
+      const phi = Math.PI + theta;
+      const lr = k % 4 === 0 ? LR + 32 : k % 2 === 0 ? LR + 8 : LR; // keep clear of the Moon
+      const lx = EX + lr * Math.cos(phi), ly = EY - lr * Math.sin(phi);
+      const g = el('g', { class: 'olabel', 'data-k': k, tabindex: 0, role: 'button', 'aria-label': T('jumpTo', ph.name) }, labels);
+      miniMoon(g, f1(lx), f1(ly - 12), 10, theta);
+      el('text', { x: f1(lx), y: f1(ly + 16), 'text-anchor': 'middle' }, g).textContent = ph.name;
+      const go = () => setDay((k * SYN) / 8);
+      g.addEventListener('click', go);
+      g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    });
+
+    // Moon facing arc (local frame: +x points toward Earth)
+    const fr = MR + 5;
+    $('facingArc').setAttribute('d', `M0 ${-fr} A${fr} ${fr} 0 0 1 0 ${fr}`);
+
+    // Phase strip
+    const strip = $('strip');
+    strip.textContent = '';
+    PH().forEach((ph, k) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.k = k;
+      const svg = el('svg', { viewBox: '0 0 34 34', 'aria-hidden': 'true' });
+      miniMoon(svg, 17, 17, 15, (k * TAU) / 8);
+      b.appendChild(svg);
+      b.insertAdjacentHTML('beforeend', `<span>${ph.name}</span><span class="d">${T('dayShort', nf((k * SYN) / 8))}</span>`);
+      b.addEventListener('click', () => setDay((k * SYN) / 8));
+      strip.appendChild(b);
+    });
+
+    // Table
+    const tbody = $('tbody');
+    tbody.textContent = '';
+    PH().forEach((ph, k) => {
+      const d = (k * SYN) / 8, theta = (k * TAU) / 8, t = timesFor(d);
+      const tr = document.createElement('tr');
+      tr.dataset.k = k;
+      tr.tabIndex = 0;
+      const lit = Math.round(((1 - Math.cos(theta)) / 2) * 100);
+      tr.innerHTML = `<td></td><td>${nf(d)}</td><td>${angleText(theta)}</td><td>${lit}%</td><td>${t.rise}</td><td>${t.set}</td><td>${ph.best}</td>`;
+      const svg = el('svg', { viewBox: '0 0 26 26', class: 'ico', 'aria-hidden': 'true' });
+      miniMoon(svg, 13, 13, 11, theta);
+      tr.firstChild.appendChild(svg);
+      tr.firstChild.appendChild(document.createTextNode(ph.name));
+      const go = () => { setDay(d); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+      tr.addEventListener('click', go);
+      tr.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+      tbody.appendChild(tr);
+    });
+  }
+
+  function refreshMiniMoons() {
+    document.querySelectorAll('path[data-theta]').forEach((p) => {
+      const svg = p.ownerSVGElement;
+      const c = p.previousSibling;
+      const cx = +c.getAttribute('cx'), cy = +c.getAttribute('cy'), r = +c.getAttribute('r');
+      p.setAttribute('d', phasePath(cx, cy, r, viewTheta(+p.dataset.theta)));
+    });
+  }
+
+  // ---------- Dynamic render ----------
+  function render() {
+    const day = state.day % SYN;
+    const theta = (day / SYN) * TAU;
+    const phi = Math.PI + theta;
+    const mx = EX + R * Math.cos(phi), my = EY - R * Math.sin(phi);
+
+    // Orbit view moon
+    $('moonDark').setAttribute('cx', f1(mx));
+    $('moonDark').setAttribute('cy', f1(my));
+    $('moonLit').setAttribute('d', `M${f1(mx)} ${f1(my - MR)} A${MR} ${MR} 0 0 0 ${f1(mx)} ${f1(my + MR)} Z`);
+    const toEarth = Math.atan2(EY - my, EX - mx);
+    $('moonFacing').setAttribute('transform', `translate(${f1(mx)} ${f1(my)}) rotate(${f1((toEarth * 180) / Math.PI)})`);
+    $('facingArc').style.display = state.facing ? '' : 'none';
+
+    const ux = Math.cos(toEarth), uy = Math.sin(toEarth);
+    const sight = $('sight');
+    sight.setAttribute('x1', f1(EX - ux * 46)); sight.setAttribute('y1', f1(EY - uy * 46));
+    sight.setAttribute('x2', f1(mx + ux * (MR + 8))); sight.setAttribute('y2', f1(my + uy * (MR + 8)));
+
+    // View from Earth
+    const illum = (1 - Math.cos(theta)) / 2;
+    $('skyLit').setAttribute('d', phasePath(110, 110, 88, viewTheta(theta)));
+    $('maria').setAttribute('transform', state.south ? 'rotate(180 110 110)' : '');
+    $('moonGlow').setAttribute('opacity', f1(illum * 0.22));
+
+    const k = Math.round(theta / (TAU / 8)) % 8;
+    const ph = PH()[k];
+    const waxing = theta > 0.02 && theta < Math.PI - 0.02;
+    const waning = theta > Math.PI + 0.02 && theta < TAU - 0.02;
+    $('phaseName').textContent = ph.name;
+    $('phaseSub').textContent = T('illum', Math.round(illum * 100)) + (waxing ? T('waxing') : waning ? T('waning') : '');
+    $('sAge').textContent = T('days', nf(day));
+    $('sAngle').textContent = angleText(theta);
+    const t = timesFor(day);
+    $('sRise').textContent = t.rise;
+    $('sSet').textContent = t.set;
+    $('sHigh').textContent = t.high;
+    $('sBest').textContent = ph.best;
+
+    $('slider').value = day.toFixed(2);
+    $('slider').setAttribute('aria-valuetext', T('dayValue', nf(day), ph.name));
+    $('dayLabel').textContent = T('dayLabel', nf(day));
+
+    if (k !== state.k) {
+      state.k = k;
+      $('explain').textContent = ph.text;
+      document.querySelectorAll('.olabel, #strip button, #tbody tr').forEach((n) => {
+        n.classList.toggle('active', +n.dataset.k === k);
+      });
+    }
+  }
+
+  function setDay(d) {
+    state.day = ((d % SYN) + SYN) % SYN;
+    render();
+  }
+
+  function setPlaying(p) {
+    state.playing = p;
+    const b = $('play');
+    b.textContent = p ? T('pause') : T('play');
+    b.setAttribute('aria-label', p ? T('ariaPause') : T('ariaPlay'));
+  }
+
+  function setHemisphere(south) {
+    state.south = south;
+    $('hN').setAttribute('aria-pressed', String(!south));
+    $('hS').setAttribute('aria-pressed', String(south));
+    $('viewTitle').textContent = T('viewTitle', south);
+    refreshMiniMoons();
+    render();
+  }
+
+  // ---------- Wire up ----------
+  buildScene();
+
+  $('play').addEventListener('click', () => setPlaying(!state.playing));
+  $('slider').addEventListener('input', (e) => { setPlaying(false); setDay(+e.target.value); });
+  $('speed').addEventListener('change', (e) => { state.speed = +e.target.value; });
+  $('hN').addEventListener('click', () => setHemisphere(false));
+  $('hS').addEventListener('click', () => setHemisphere(true));
+  $('facing').addEventListener('change', (e) => { state.facing = e.target.checked; render(); });
+
+  // =====================================================================
+  // Advanced view: Earth and Moon moving around the Sun
+  // =====================================================================
+  const YEAR = 365.256, SID = 27.321661;
+  const SCX = 350, SCY = 350, AU = 270, MOON_AU = 384400 / 149.6e6;
+  const ZC = 130, ZR = 92;
+  const LOOP_X = (SID / YEAR) / MOON_AU; // exaggeration above which the Moon's path loops
+
+  const adv = { t: 0, playing: state.playing, speed: 10, X: 40, trail: true, ghost: true, built: false };
+
+  // Calendar: t = 0 is 1 January. Earth's heliocentric longitude on 1 Jan is ~100° (measured from the March-equinox direction, +x).
+  const E0 = (100.5 * Math.PI) / 180;
+  const MDAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  const MSTART = MDAYS.reduce((acc, d) => (acc.push(acc[acc.length - 1] + d), acc), [0]); // 13 entries, last = 365
+  const monthOf = (doy) => { const d = (doy * 365) / YEAR; let m = 0; while (m < 11 && d >= MSTART[m + 1]) m++; return [m, Math.floor(d - MSTART[m]) + 1]; };
+  const earthAng = (t) => E0 + (TAU * t) / YEAR;                    // star-fixed angle, Earth around Sun
+  const moonAng = (t) => earthAng(t) + Math.PI + (TAU * t) / SYN;   // star-fixed angle, Moon around Earth
+  const earthPos = (t) => { const a = earthAng(t); return [SCX + AU * Math.cos(a), SCY - AU * Math.sin(a)]; };
+  const moonR = () => AU * MOON_AU * adv.X;
+  const moonPos = (t) => {
+    const [ex, ey] = earthPos(t), a = moonAng(t), r = moonR();
+    return [ex + r * Math.cos(a), ey - r * Math.sin(a)];
+  };
+  const sunAngleDeg = (x, y) => (Math.atan2(SCY - y, SCX - x) * 180) / Math.PI; // screen angle toward Sun
+  const lastNew = (t) => Math.floor(t / SYN + 1e-9) * SYN;
+  const setA = (id, attrs) => { const n = $(id); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); };
+
+  function buildAdvanced() {
+    const r1 = rng(23), hs = $('hStars');
+    for (let i = 0; i < 220; i++) {
+      el('circle', { cx: f1(r1() * 700), cy: f1(r1() * 700), r: f1(0.3 + r1() * 1.1), fill: '#fff', opacity: f1(0.15 + r1() * 0.6) }, hs);
+    }
+    const r2 = rng(5), zs = $('zStars');
+    for (let i = 0; i < 45; i++) {
+      el('circle', { cx: f1(r2() * 260), cy: f1(r2() * 260), r: f1(0.3 + r2() * 0.8), fill: '#fff', opacity: f1(0.15 + r2() * 0.5) }, zs);
+    }
+    const p = (a, rr) => `${f1(SCX + rr * Math.cos(a))} ${f1(SCY - rr * Math.sin(a))}`;
+    const a1 = (118 * Math.PI) / 180, a2 = (138 * Math.PI) / 180;
+    $('hOrbitArrow').setAttribute('d', `M${p(a1, AU + 18)} A${AU + 18} ${AU + 18} 0 0 0 ${p(a2, AU + 18)}`);
+
+    // Month boundaries (ticks across the orbit) and names (inside the orbit, clear of the Moon's path)
+    const hm = $('hMonths');
+    const angAtDay = (d) => E0 + (TAU * d) / 365;
+    T('months').forEach((name, m) => {
+      const ab = angAtDay(MSTART[m]);
+      el('line', { x1: f1(SCX + (AU - 7) * Math.cos(ab)), y1: f1(SCY - (AU - 7) * Math.sin(ab)), x2: f1(SCX + (AU + 7) * Math.cos(ab)), y2: f1(SCY - (AU + 7) * Math.sin(ab)), stroke: '#4a5578', 'stroke-width': 1.5 }, hm);
+      const am = angAtDay((MSTART[m] + MSTART[m + 1]) / 2), lr = AU - 56;
+      el('text', { class: 'hmonth', 'data-m': m, x: f1(SCX + lr * Math.cos(am)), y: f1(SCY - lr * Math.sin(am)) }, hm).textContent = name;
+    });
+    adv.built = true;
+  }
+
+  function renderAdv() {
+    if (!adv.built) buildAdvanced();
+    const t = adv.t;
+    const [ex, ey] = earthPos(t);
+    const [mx, my] = moonPos(t);
+    const mr = moonR();
+    const tN = lastNew(t), age = t - tN;
+    const [gx, gy] = earthPos(tN);
+    const ea = earthAng(t);
+
+    // --- Heliocentric view ---
+    setA('hEarth', { transform: `translate(${f1(ex)} ${f1(ey)}) rotate(${f1(sunAngleDeg(ex, ey))})` });
+    const bodyR = Math.max(1.5, Math.min(6, mr * 0.28));
+    setA('hMoonDark', { cx: f1(mx), cy: f1(my), r: f1(bodyR) });
+    setA('hMoonLit', { d: `M0 ${-bodyR} A${bodyR} ${bodyR} 0 0 1 0 ${bodyR} Z`, transform: `translate(${f1(mx)} ${f1(my)}) rotate(${f1(sunAngleDeg(mx, my))})` });
+    $('hMoon').style.display = mr < 4 ? 'none' : '';
+    setA('hMoonOrbit', { cx: f1(ex), cy: f1(ey), r: f1(mr) });
+    $('hMoonOrbit').style.display = mr < 6 ? 'none' : '';
+    setA('hSunLine', { x1: SCX, y1: SCY, x2: f1(ex), y2: f1(ey) });
+
+    const ux = Math.cos(ea), uy = -Math.sin(ea);
+    const lo = mr + 22;
+    setA('hEarthLabel', { x: f1(ex + ux * lo), y: f1(ey + uy * lo + 4) });
+
+    // Earth's progress since last new Moon
+    const p = (x, y) => `${f1(x)} ${f1(y)}`;
+    $('hEarthArc').setAttribute('d', age > 0.05 ? `M${p(gx, gy)} A${AU} ${AU} 0 0 0 ${p(ex, ey)}` : '');
+
+    // Ghost at last new Moon
+    $('hGhost').style.display = adv.ghost && age > 2 ? '' : 'none';
+    if (adv.ghost) {
+      const [gmx, gmy] = moonPos(tN);
+      setA('hGhostEarth', { cx: f1(gx), cy: f1(gy) });
+      setA('hGhostMoon', { cx: f1(gmx), cy: f1(gmy), r: f1(bodyR * 0.9) });
+      setA('hGhostLine', { x1: SCX, y1: SCY, x2: f1(gx), y2: f1(gy) });
+      const ga = earthAng(tN), gl = mr + 34;
+      setA('hGhostLabel', { x: f1(gx - Math.cos(ga) * gl), y: f1(gy + Math.sin(ga) * gl + 4) });
+    }
+
+    // Moon's path over the last 60 days
+    $('hTrail').style.display = adv.trail ? '' : 'none';
+    if (adv.trail) {
+      const pts = [];
+      for (let tau = t - 60; tau <= t + 1e-6; tau += 0.2) {
+        const [x, y] = moonPos(tau);
+        pts.push(`${f1(x)},${f1(y)}`);
+      }
+      $('hTrail').setAttribute('points', pts.join(' '));
+    }
+
+    // --- Close-up (star-fixed orientation) ---
+    const sNow = sunAngleDeg(ex, ey), sNew = sunAngleDeg(gx, gy);
+    const rad = (d) => (d * Math.PI) / 180;
+    const endAt = (deg, r) => [ZC + r * Math.cos(rad(deg)), ZC + r * Math.sin(rad(deg))];
+    const [sx, sy] = endAt(sNow, 122), [kx, ky] = endAt(sNew, 122);
+    setA('zSunLine', { x2: f1(sx), y2: f1(sy) });
+    setA('zSunMark', { cx: f1(sx), cy: f1(sy) });
+    setA('zStarLine', { x2: f1(kx), y2: f1(ky) });
+    const [kx2, ky2] = endAt(sNew, 112);
+    setA('zStarMark', { x: f1(kx2), y: f1(ky2) });
+    setA('zEarth', { transform: `translate(${ZC} ${ZC}) rotate(${f1(sNow)})` });
+    const ma = moonAng(t);
+    const zmx = ZC + ZR * Math.cos(ma), zmy = ZC - ZR * Math.sin(ma);
+    setA('zMoon', { transform: `translate(${f1(zmx)} ${f1(zmy)}) rotate(${f1(sNow)})` });
+
+    // Spiral: how far the Moon has turned against the stars since last new Moon
+    const a0 = moonAng(tN), spts = [];
+    const spiralAt = (sw) => { const r = 54 + (12 * sw) / TAU, a = a0 + sw; return [ZC + r * Math.cos(a), ZC - r * Math.sin(a)]; };
+    const swept = (TAU * age) / SID;
+    if (age > 0.15) {
+      const n = Math.max(2, Math.ceil(age / 0.2));
+      for (let i = 0; i <= n; i++) { const [x, y] = spiralAt((swept * i) / n); spts.push(`${f1(x)},${f1(y)}`); }
+    }
+    $('zSpiral').setAttribute('points', spts.join(' '));
+    $('zSidereal').style.display = age >= SID ? '' : 'none';
+    if (age >= SID) {
+      const [dx, dy] = spiralAt(TAU);
+      setA('zSidDot', { cx: f1(dx), cy: f1(dy) });
+      setA('zSidText', { x: f1(dx + 18), y: f1(dy + 4) });
+    }
+
+    // --- Panel ---
+    const theta = (TAU * age) / SYN;
+    $('aPhaseIcon').setAttribute('d', phasePath(22, 22, 19, viewTheta(theta)));
+    const ph = PH()[Math.round(theta / (TAU / 8)) % 8];
+    $('aPhaseName').textContent = ph.name;
+    $('aPhaseSub').textContent = T('aPhaseSub', nf(age));
+    const turnedDeg = (swept * 180) / Math.PI, earthDeg = (360 * age) / YEAR;
+    $('aTurned').textContent = `${Math.round(turnedDeg)}°`;
+    $('aEarthMoved').textContent = `${nf(earthDeg)}°`;
+    const doy = ((t % YEAR) + YEAR) % YEAR;
+    const [mon, dom] = monthOf(doy);
+    $('aDoy').textContent = T('aDoy', dom, mon, Math.floor(doy) + 1);
+    if (mon !== adv.month) {
+      adv.month = mon;
+      document.querySelectorAll('.hmonth').forEach((n) => n.classList.toggle('active', +n.dataset.m === mon));
+    }
+    $('aMonths').textContent = `${Math.floor(t / SYN + 1e-9)} (${nf(t / SYN)})`;
+
+    $('aExplain').textContent = age < 0.3
+      ? T('explainNew')
+      : age < SID
+        ? T('explainBefore', nf(age), Math.round(turnedDeg), nf(earthDeg))
+        : T('explainAfter', nf(earthDeg), nf(SYN - age));
+
+    $('aSlider').value = doy.toFixed(2);
+    $('aSlider').setAttribute('aria-valuetext', T('aValue', dom, mon, ph.name));
+    $('aDayLabel').textContent = T('aDayLabel', dom, mon, Math.floor(t / YEAR) + 1);
+  }
+
+  function setAdvT(t) { adv.t = Math.max(0, t); renderAdv(); }
+
+  function setAdvPlaying(p) {
+    adv.playing = p;
+    const b = $('aPlay');
+    b.textContent = p ? T('pause') : T('play');
+    b.setAttribute('aria-label', p ? T('ariaPause') : T('ariaPlay'));
+  }
+
+  function setScale(x) {
+    adv.X = x;
+    $('aScaleLabel').textContent = `×${x}`;
+    const note = $('aScaleNote');
+    if (x === 1) {
+      note.textContent = T('noteTrue');
+      note.className = 'note';
+    } else if (x > LOOP_X) {
+      note.textContent = T('noteLoops', x, Math.round(LOOP_X));
+      note.className = 'note warn';
+    } else {
+      note.textContent = T('noteWiggle', x);
+      note.className = 'note';
+    }
+    if (activeTab === 'advanced') renderAdv();
+  }
+
+  $('aPlay').addEventListener('click', () => setAdvPlaying(!adv.playing));
+  $('aSlider').addEventListener('input', (e) => { setAdvPlaying(false); setAdvT(Math.floor(adv.t / YEAR) * YEAR + +e.target.value); });
+  $('aSpeed').addEventListener('change', (e) => { adv.speed = +e.target.value; });
+  $('aScale').addEventListener('input', (e) => setScale(+e.target.value));
+  $('aTrail').addEventListener('change', (e) => { adv.trail = e.target.checked; renderAdv(); });
+  $('aGhost').addEventListener('change', (e) => { adv.ghost = e.target.checked; renderAdv(); });
+  $('aPrevNew').addEventListener('click', () => {
+    setAdvPlaying(false);
+    const tN = lastNew(adv.t);
+    setAdvT(adv.t - tN < 0.05 ? tN - SYN : tN);
+  });
+  $('aNextNew').addEventListener('click', () => { setAdvPlaying(false); setAdvT(lastNew(adv.t) + SYN); });
+  $('aSid').addEventListener('click', () => { setAdvPlaying(false); setAdvT(adv.t + SID); });
+
+  // ---------- Tabs ----------
+  let activeTab = 'phases';
+  const TABS = ['phases', 'advanced'];
+  function selectTab(name, focus) {
+    activeTab = name;
+    TABS.forEach((n) => {
+      const on = n === name;
+      const btn = $(`tabBtn-${n}`);
+      btn.setAttribute('aria-selected', String(on));
+      btn.tabIndex = on ? 0 : -1;
+      $(`tab-${n}`).hidden = !on;
+      if (on && focus) btn.focus();
+    });
+    try { history.replaceState(null, '', name === 'advanced' ? '#advanced' : location.pathname + location.search); } catch (_) {}
+    if (name === 'advanced') {
+      // Start the Sun view at the same Moon age as the Phases view
+      if (!adv.built) adv.t = state.day;
+      renderAdv();
+    } else {
+      render();
+    }
+  }
+  TABS.forEach((n, i) => {
+    const btn = $(`tabBtn-${n}`);
+    btn.addEventListener('click', () => selectTab(n));
+    btn.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const j = (i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length;
+        selectTab(TABS[j], true);
+      }
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'select' || tag === 'button' || e.target.getAttribute('role') === 'button' || tag === 'tr') return;
+    const isAdv = activeTab === 'advanced';
+    if (e.key === ' ') {
+      e.preventDefault();
+      isAdv ? setAdvPlaying(!adv.playing) : setPlaying(!state.playing);
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      const step = e.key === 'ArrowRight' ? 1 : -1;
+      if (isAdv) { setAdvPlaying(false); setAdvT(adv.t + step); }
+      else { setPlaying(false); setDay(state.day + step); }
+    }
+  });
+
+  let last = null;
+  function tick(ts) {
+    if (last !== null) {
+      const dt = Math.min(0.1, (ts - last) / 1000);
+      if (activeTab === 'phases' && state.playing) {
+        state.day = (state.day + dt * state.speed) % SYN;
+        render();
+      } else if (activeTab === 'advanced' && adv.playing) {
+        adv.t += dt * adv.speed;
+        renderAdv();
+      }
+    }
+    last = ts;
+    requestAnimationFrame(tick);
+  }
+
+  function applyLang(l) {
+    lang = STR[l] ? l : 'en';
+    document.documentElement.lang = lang;
+    document.title = T('docTitle');
+    const md = document.querySelector('meta[name="description"]');
+    if (md) md.setAttribute('content', T('metaDesc'));
+    const dict = lang === 'pl' ? STATIC_PL : STATIC_EN;
+    document.querySelectorAll('[data-i18n]').forEach((n) => {
+      const k = n.dataset.i18n;
+      n.textContent = k in dict ? dict[k] : STATIC_EN[k];
+    });
+    document.querySelectorAll('[data-i18n-aria]').forEach((n) => {
+      const k = n.dataset.i18nAria;
+      n.setAttribute('aria-label', k in dict ? dict[k] : STATIC_EN[k]);
+    });
+    document.querySelectorAll('.flag').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+    buildLocalized();
+    document.querySelectorAll('.hmonth').forEach((n) => { n.textContent = T('months')[+n.dataset.m]; });
+    state.k = -1;
+    adv.month = -1;
+    setPlaying(state.playing);
+    setAdvPlaying(adv.playing);
+    $('viewTitle').textContent = T('viewTitle', state.south);
+    render();
+    setScale(adv.X);
+    try { localStorage.setItem('lunar-phases-lang', lang); } catch (_) {}
+  }
+  document.querySelectorAll('.flag').forEach((b) => b.addEventListener('click', () => applyLang(b.dataset.lang)));
+
+  let initLang = '';
+  try { initLang = localStorage.getItem('lunar-phases-lang') || ''; } catch (_) {}
+  if (!initLang) initLang = (navigator.language || '').toLowerCase().startsWith('pl') ? 'pl' : 'en';
+  applyLang(initLang);
+  if (location.hash === '#advanced') selectTab('advanced');
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
