@@ -140,6 +140,8 @@
   .hmonth { fill: #6f7899; font-size: 12px; }
   .hmonth.active { fill: var(--text); font-weight: 700; }
   .note.warn { color: #ffb38a; }
+  .date-pick { display: inline-flex; align-items: center; gap: 10px; }
+  input[type=date] { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; color-scheme: dark; }
 
   @media (max-width: 920px) {
     .stage { grid-template-columns: 1fr; }
@@ -392,7 +394,7 @@
           <span><i class="ln trail"></i><span data-i18n="legTrail">Moon's path (last 60 days)</span></span>
           <span><i class="ln arc"></i><span data-i18n="legArc">Earth's progress since last new Moon</span></span>
           <span><i class="sw ghost"></i><span data-i18n="legGhost">Where Earth was at last new Moon</span></span>
-          <span data-i18n="legScale">Sizes and Moon distance exaggerated · Moon phases illustrative, not for a specific year</span>
+          <span data-i18n="legScale">Sizes and Moon distance exaggerated · Moon positions and phases computed for real dates</span>
         </div>
       </div>
 
@@ -439,7 +441,7 @@
           <div class="stat"><small data-i18n="stTurned">Moon turned vs. stars</small><b id="aTurned">0°</b></div>
           <div class="stat"><small data-i18n="stEarthMoved">Earth moved around Sun</small><b id="aEarthMoved">0°</b></div>
           <div class="stat"><small data-i18n="stDate">Date</small><b id="aDoy">0</b></div>
-          <div class="stat"><small data-i18n="stMonths">Lunar months so far</small><b id="aMonths">0</b></div>
+          <div class="stat"><small data-i18n="stIllum">Illuminated</small><b id="aIllum">0%</b></div>
         </div>
         <p class="explain" id="aExplain"></p>
       </div>
@@ -452,6 +454,16 @@
           <input id="aSlider" type="range" min="0" max="365.25" step="0.05" value="0" aria-label="Date in the year" data-i18n-aria="ariaASlider">
           <span id="aDayLabel">1 January · year 1</span>
         </div>
+      </div>
+      <div class="row">
+        <label class="muted date-pick"><span data-i18n="pickDate">Go to date</span>
+          <input type="date" id="aDate" min="1900-01-01" max="2100-12-31"></label>
+        <button type="button" id="aToday" data-i18n="today">Today</button>
+        <span class="note" data-i18n="dateNote">Shows the real Moon phase on that date (at noon in your time zone).</span>
+      </div>
+      <div class="row">
+        <button type="button" id="aPrevFull" data-i18n="prevFull">⏮ Previous full Moon</button>
+        <button type="button" id="aNextFull" data-i18n="nextFull">Next full Moon ⏭</button>
       </div>
       <div class="row">
         <button type="button" id="aPrevNew" data-i18n="prevNew">⏮ Previous new Moon</button>
@@ -602,10 +614,11 @@
     helioCaption: 'Orbita Ziemi: 365,25 dnia · Księżyc: 29,5 dnia na cykl faz',
     ghostLabel: 'ostatni nów', earth: 'Ziemia',
     legTrail: 'Droga Księżyca (ostatnie 60 dni)', legArc: 'Droga Ziemi od ostatniego nowiu', legGhost: 'Położenie Ziemi w ostatnim nowiu',
-    legScale: 'Rozmiary i odległość Księżyca powiększone · fazy poglądowe, nie dla konkretnego roku',
+    legScale: 'Rozmiary i odległość Księżyca powiększone · położenia i fazy Księżyca obliczone dla rzeczywistych dat',
     zoomTitle: 'Zbliżenie na okolice Ziemi', ariaZoom: 'Zbliżenie Ziemi i Księżyca z kierunkiem do Słońca', zSid: '27,3 d',
     zlSun: 'Kierunek do Słońca teraz', zlStar: 'Kierunek do Słońca w ostatnim nowiu (stały względem gwiazd)', zlSpiral: 'O ile obrócił się Księżyc od tego czasu',
-    stTurned: 'Obrót Księżyca wzgl. gwiazd', stEarthMoved: 'Ruch Ziemi wokół Słońca', stDate: 'Data', stMonths: 'Miesiące księżycowe',
+    stTurned: 'Obrót Księżyca wzgl. gwiazd', stEarthMoved: 'Ruch Ziemi wokół Słońca', stDate: 'Data', stIllum: 'Oświetlenie',
+    pickDate: 'Przejdź do daty', today: 'Dziś', prevFull: '⏮ Poprzednia pełnia', nextFull: 'Następna pełnia ⏭', dateNote: 'Pokazuje rzeczywistą fazę Księżyca w tym dniu (w południe, w Twojej strefie czasowej).',
     ariaASlider: 'Data w roku', prevNew: '⏮ Poprzedni nów', nextNew: 'Następny nów ⏭', sidBtn: '+ 27,3 dnia (jeden obrót wzgl. gwiazd)',
     moonDistance: 'Odległość Księżyca', ariaAScale: 'Powiększenie orbity Księżyca', chkTrail: 'Droga Księżyca', chkGhost: 'Ostatni nów',
     a1t: 'Dwa rodzaje miesiąca', a1p: 'Księżyc wykonuje pełny obrót względem gwiazd w 27,3 dnia (miesiąc gwiazdowy). W tym czasie Ziemia przesuwa się jednak o ok. 27° wokół Słońca, więc Księżyc potrzebuje jeszcze ok. 2,2 dnia, by znów znaleźć się między Ziemią a Słońcem. Od nowiu do nowiu mija 29,5 dnia (miesiąc synodyczny). Wypróbuj przycisk „+ 27,3 dnia” zaraz po nowiu.',
@@ -636,8 +649,8 @@
       noon: 'Noon', pm6: '6 pm', midnight: 'Midnight', am6: '6 am',
       months: MONTHS_EN,
       aPhaseSub: (a) => `Moon age ${a} of 29.5 days`,
-      aDoy: (dom, m, n) => `${dom} ${MONTHS_EN[m].slice(0, 3)} · day ${n}`,
-      aDayLabel: (dom, m, y) => `${dom} ${MONTHS_EN[m]} · year ${y}`,
+      aDoy: (dom, m, y) => `${dom} ${MONTHS_EN[m].slice(0, 3)} ${y}`,
+      aDayLabel: (dom, m, y) => `${dom} ${MONTHS_EN[m]} ${y}`,
       aValue: (dom, m, name) => `${dom} ${MONTHS_EN[m]}, ${name}`,
       explainNew: 'New Moon: the Moon is lined up between Earth and the Sun. Watch the yellow line (direction to the Sun) slowly turn as Earth moves along its orbit, while the violet line stays fixed against the stars.',
       explainBefore: (age, deg, e) => `Since the last new Moon ${age} days ago, the Moon has turned ${deg}° against the stars, while Earth carried it ${e}° around the Sun. After 27.3 days it will have turned a full 360°.`,
@@ -659,8 +672,8 @@
       noon: 'Południe', pm6: '18:00', midnight: 'Północ', am6: '6:00',
       months: MONTHS_PL,
       aPhaseSub: (a) => `Wiek Księżyca: ${a} z 29,5 dnia`,
-      aDoy: (dom, m, n) => `${dom} ${MONTHS_PL_SHORT[m]} · dzień ${n}`,
-      aDayLabel: (dom, m, y) => `${dom} ${MONTHS_PL_GEN[m]} · rok ${y}`,
+      aDoy: (dom, m, y) => `${dom} ${MONTHS_PL_SHORT[m]} ${y}`,
+      aDayLabel: (dom, m, y) => `${dom} ${MONTHS_PL_GEN[m]} ${y}`,
       aValue: (dom, m, name) => `${dom} ${MONTHS_PL_GEN[m]}, ${name}`,
       explainNew: 'Nów: Księżyc stoi w jednej linii między Ziemią a Słońcem. Zobacz, jak żółta linia (kierunek do Słońca) powoli się obraca, gdy Ziemia porusza się po orbicie, a fioletowa linia pozostaje nieruchoma względem gwiazd.',
       explainBefore: (age, deg, e) => `Od ostatniego nowiu (${age} dnia temu) Księżyc obrócił się o ${deg}° względem gwiazd, a Ziemia przeniosła go o ${e}° wokół Słońca. Po 27,3 dnia obróci się o pełne 360°.`,
@@ -923,15 +936,30 @@
   const ZC = 130, ZR = 92;
   const LOOP_X = (SID / YEAR) / MOON_AU; // exaggeration above which the Moon's path loops
 
-  const adv = { t: 0, playing: state.playing, speed: 10, X: 40, trail: true, ghost: true, built: false };
+  // Time is measured in days since 1970-01-01 UTC (Unix time / 86 400 000).
+  const DAY_MS = 864e5, J2000 = 10957.5; // J2000.0 = 2000-01-01 12:00 UTC
+  const T_MIN = Date.UTC(1900, 0, 1) / DAY_MS, T_MAX = Date.UTC(2100, 11, 31, 12) / DAY_MS;
+  const rad = (deg) => (deg * Math.PI) / 180;
+  const yearStart = (y) => new Date(y, 0, 1).getTime() / DAY_MS;          // local midnight, 1 January
+  const localNoon = (y, m, d) => new Date(y, m, d, 12).getTime() / DAY_MS;
+  const isoLocal = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 
-  // Calendar: t = 0 is 1 January. Earth's heliocentric longitude on 1 Jan is ~100° (measured from the March-equinox direction, +x).
-  const E0 = (100.5 * Math.PI) / 180;
-  const MDAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  const MSTART = MDAYS.reduce((acc, d) => (acc.push(acc[acc.length - 1] + d), acc), [0]); // 13 entries, last = 365
-  const monthOf = (doy) => { const d = (doy * 365) / YEAR; let m = 0; while (m < 11 && d >= MSTART[m + 1]) m++; return [m, Math.floor(d - MSTART[m]) + 1]; };
-  const earthAng = (t) => E0 + (TAU * t) / YEAR;                    // star-fixed angle, Earth around Sun
-  const moonAng = (t) => earthAng(t) + Math.PI + (TAU * t) / SYN;   // star-fixed angle, Moon around Earth
+  const adv = { t: Date.now() / DAY_MS, playing: state.playing, speed: 10, X: 40, trail: true, ghost: true, built: false };
+
+  // Sun–Earth–Moon angle (elongation) in radians, continuous: 0 = new, PI = full.
+  // Low-precision lunar theory (Meeus, Astronomical Algorithms, ch. 48): good to ~1°, i.e. under an hour.
+  function thetaRad(t) {
+    const d = t - J2000;
+    const D = 297.8501921 + 12.19074912 * d, M = 357.5291092 + 0.98560028 * d, Mp = 134.9633964 + 13.06499295 * d;
+    return rad(D + 6.289 * Math.sin(rad(Mp)) - 2.1 * Math.sin(rad(M)) + 1.274 * Math.sin(rad(2 * D - Mp))
+      + 0.658 * Math.sin(rad(2 * D)) + 0.214 * Math.sin(rad(2 * Mp)) + 0.11 * Math.sin(rad(D)));
+  }
+  // Earth's heliocentric longitude (angle from the March-equinox direction, +x), continuous.
+  function earthAng(t) {
+    const d = t - J2000, M = rad(357.5291092 + 0.98560028 * d);
+    return rad(280.46646 + 0.98564736 * d + 1.9146 * Math.sin(M) + 0.019993 * Math.sin(2 * M) + 180);
+  }
+  const moonAng = (t) => earthAng(t) + Math.PI + thetaRad(t);   // star-fixed angle, Moon around Earth
   const earthPos = (t) => { const a = earthAng(t); return [SCX + AU * Math.cos(a), SCY - AU * Math.sin(a)]; };
   const moonR = () => AU * MOON_AU * adv.X;
   const moonPos = (t) => {
@@ -939,7 +967,24 @@
     return [ex + r * Math.cos(a), ey - r * Math.sin(a)];
   };
   const sunAngleDeg = (x, y) => (Math.atan2(SCY - y, SCX - x) * 180) / Math.PI; // screen angle toward Sun
-  const lastNew = (t) => Math.floor(t / SYN + 1e-9) * SYN;
+  const wrapPi = (a) => a - TAU * Math.floor((a + Math.PI) / TAU);
+  function newMoonNear(t) { for (let i = 0; i < 6; i++) t -= wrapPi(thetaRad(t)) / (TAU / SYN); return t; }
+  function fullMoonNear(t) { for (let i = 0; i < 6; i++) t -= wrapPi(thetaRad(t) - Math.PI) / (TAU / SYN); return t; }
+  function nextFull(t) {
+    let tf = fullMoonNear(t + norm(Math.PI - thetaRad(t)) / (TAU / SYN));
+    if (tf <= t + 0.01) tf = fullMoonNear(tf + SYN); // already at (or just past) full: go to the following one
+    return tf;
+  }
+  function prevFull(t) {
+    let tf = fullMoonNear(t - norm(thetaRad(t) - Math.PI) / (TAU / SYN));
+    if (tf >= t - 0.01) tf = fullMoonNear(tf - SYN); // already at (or just before) full: go to the one before
+    return tf;
+  }
+  function lastNew(t) {
+    let tn = newMoonNear(t - norm(thetaRad(t)) / (TAU / SYN));
+    if (tn > t + 1e-6) tn = newMoonNear(tn - SYN);
+    return tn;
+  }
   const setA = (id, attrs) => { const n = $(id); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); };
 
   function buildAdvanced() {
@@ -957,11 +1002,11 @@
 
     // Month boundaries (ticks across the orbit) and names (inside the orbit, clear of the Moon's path)
     const hm = $('hMonths');
-    const angAtDay = (d) => E0 + (TAU * d) / 365;
+    const yr = new Date().getFullYear();
     T('months').forEach((name, m) => {
-      const ab = angAtDay(MSTART[m]);
+      const ab = earthAng(localNoon(yr, m, 1));
       el('line', { x1: f1(SCX + (AU - 7) * Math.cos(ab)), y1: f1(SCY - (AU - 7) * Math.sin(ab)), x2: f1(SCX + (AU + 7) * Math.cos(ab)), y2: f1(SCY - (AU + 7) * Math.sin(ab)), stroke: '#4a5578', 'stroke-width': 1.5 }, hm);
-      const am = angAtDay((MSTART[m] + MSTART[m + 1]) / 2), lr = AU - 56;
+      const am = (ab + earthAng(localNoon(yr, m + 1, 1))) / 2, lr = AU - 56;
       el('text', { class: 'hmonth', 'data-m': m, x: f1(SCX + lr * Math.cos(am)), y: f1(SCY - lr * Math.sin(am)) }, hm).textContent = name;
     });
     adv.built = true;
@@ -1035,49 +1080,52 @@
     // Spiral: how far the Moon has turned against the stars since last new Moon
     const a0 = moonAng(tN), spts = [];
     const spiralAt = (sw) => { const r = 54 + (12 * sw) / TAU, a = a0 + sw; return [ZC + r * Math.cos(a), ZC - r * Math.sin(a)]; };
-    const swept = (TAU * age) / SID;
+    const swept = moonAng(t) - a0;
     if (age > 0.15) {
       const n = Math.max(2, Math.ceil(age / 0.2));
       for (let i = 0; i <= n; i++) { const [x, y] = spiralAt((swept * i) / n); spts.push(`${f1(x)},${f1(y)}`); }
     }
     $('zSpiral').setAttribute('points', spts.join(' '));
-    $('zSidereal').style.display = age >= SID ? '' : 'none';
-    if (age >= SID) {
+    $('zSidereal').style.display = swept >= TAU ? '' : 'none';
+    if (swept >= TAU) {
       const [dx, dy] = spiralAt(TAU);
       setA('zSidDot', { cx: f1(dx), cy: f1(dy) });
       setA('zSidText', { x: f1(dx + 18), y: f1(dy + 4) });
     }
 
     // --- Panel ---
-    const theta = (TAU * age) / SYN;
+    const theta = thetaRad(t);
     $('aPhaseIcon').setAttribute('d', phasePath(22, 22, 19, viewTheta(theta)));
-    const ph = PH()[Math.round(theta / (TAU / 8)) % 8];
+    const ph = PH()[Math.round(norm(theta) / (TAU / 8)) % 8];
     $('aPhaseName').textContent = ph.name;
     $('aPhaseSub').textContent = T('aPhaseSub', nf(age));
-    const turnedDeg = (swept * 180) / Math.PI, earthDeg = (360 * age) / YEAR;
+    const turnedDeg = (swept * 180) / Math.PI, earthDeg = ((earthAng(t) - earthAng(tN)) * 180) / Math.PI;
     $('aTurned').textContent = `${Math.round(turnedDeg)}°`;
     $('aEarthMoved').textContent = `${nf(earthDeg)}°`;
-    const doy = ((t % YEAR) + YEAR) % YEAR;
-    const [mon, dom] = monthOf(doy);
-    $('aDoy').textContent = T('aDoy', dom, mon, Math.floor(doy) + 1);
+    const dt = new Date(t * DAY_MS), yr = dt.getFullYear(), mon = dt.getMonth(), dom = dt.getDate();
+    const doy = t - yearStart(yr);
+    $('aDoy').textContent = T('aDoy', dom, mon, yr);
+    const di = $('aDate');
+    if (document.activeElement !== di) di.value = isoLocal(dt);
     if (mon !== adv.month) {
       adv.month = mon;
       document.querySelectorAll('.hmonth').forEach((n) => n.classList.toggle('active', +n.dataset.m === mon));
     }
-    $('aMonths').textContent = `${Math.floor(t / SYN + 1e-9)} (${nf(t / SYN)})`;
+    $('aIllum').textContent = `${Math.round(((1 - Math.cos(theta)) / 2) * 100)}%`;
 
     $('aExplain').textContent = age < 0.3
       ? T('explainNew')
-      : age < SID
+      : turnedDeg < 360
         ? T('explainBefore', nf(age), Math.round(turnedDeg), nf(earthDeg))
-        : T('explainAfter', nf(earthDeg), nf(SYN - age));
+        : T('explainAfter', nf(earthDeg), nf(newMoonNear(tN + SYN) - t));
 
+    $('aSlider').max = (yearStart(yr + 1) - yearStart(yr)).toFixed(2);
     $('aSlider').value = doy.toFixed(2);
     $('aSlider').setAttribute('aria-valuetext', T('aValue', dom, mon, ph.name));
-    $('aDayLabel').textContent = T('aDayLabel', dom, mon, Math.floor(t / YEAR) + 1);
+    $('aDayLabel').textContent = T('aDayLabel', dom, mon, yr);
   }
 
-  function setAdvT(t) { adv.t = Math.max(0, t); renderAdv(); }
+  function setAdvT(t) { adv.t = Math.min(T_MAX, Math.max(T_MIN, t)); renderAdv(); }
 
   function setAdvPlaying(p) {
     adv.playing = p;
@@ -1104,7 +1152,7 @@
   }
 
   $('aPlay').addEventListener('click', () => setAdvPlaying(!adv.playing));
-  $('aSlider').addEventListener('input', (e) => { setAdvPlaying(false); setAdvT(Math.floor(adv.t / YEAR) * YEAR + +e.target.value); });
+  $('aSlider').addEventListener('input', (e) => { setAdvPlaying(false); setAdvT(yearStart(new Date(adv.t * DAY_MS).getFullYear()) + +e.target.value); });
   $('aSpeed').addEventListener('change', (e) => { adv.speed = +e.target.value; });
   $('aScale').addEventListener('input', (e) => setScale(+e.target.value));
   $('aTrail').addEventListener('change', (e) => { adv.trail = e.target.checked; renderAdv(); });
@@ -1112,9 +1160,18 @@
   $('aPrevNew').addEventListener('click', () => {
     setAdvPlaying(false);
     const tN = lastNew(adv.t);
-    setAdvT(adv.t - tN < 0.05 ? tN - SYN : tN);
+    setAdvT(adv.t - tN < 0.05 ? newMoonNear(tN - SYN) : tN);
   });
-  $('aNextNew').addEventListener('click', () => { setAdvPlaying(false); setAdvT(lastNew(adv.t) + SYN); });
+  $('aNextNew').addEventListener('click', () => { setAdvPlaying(false); setAdvT(newMoonNear(lastNew(adv.t) + SYN)); });
+  $('aDate').addEventListener('change', (e) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(e.target.value);
+    if (!m) return;
+    setAdvPlaying(false);
+    setAdvT(localNoon(+m[1], +m[2] - 1, +m[3]));
+  });
+  $('aNextFull').addEventListener('click', () => { setAdvPlaying(false); setAdvT(nextFull(adv.t)); });
+  $('aPrevFull').addEventListener('click', () => { setAdvPlaying(false); setAdvT(prevFull(adv.t)); });
+  $('aToday').addEventListener('click', () => { setAdvPlaying(false); setAdvT(Date.now() / DAY_MS); });
   $('aSid').addEventListener('click', () => { setAdvPlaying(false); setAdvT(adv.t + SID); });
 
   // ---------- Tabs ----------
@@ -1132,8 +1189,6 @@
     });
     try { history.replaceState(null, '', name === 'advanced' ? '#advanced' : location.pathname + location.search); } catch (_) {}
     if (name === 'advanced') {
-      // Start the Sun view at the same Moon age as the Phases view
-      if (!adv.built) adv.t = state.day;
       renderAdv();
     } else {
       render();
