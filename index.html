@@ -970,15 +970,24 @@
   const wrapPi = (a) => a - TAU * Math.floor((a + Math.PI) / TAU);
   function newMoonNear(t) { for (let i = 0; i < 6; i++) t -= wrapPi(thetaRad(t)) / (TAU / SYN); return t; }
   function fullMoonNear(t) { for (let i = 0; i < 6; i++) t -= wrapPi(thetaRad(t) - Math.PI) / (TAU / SYN); return t; }
-  function nextFull(t) {
-    let tf = fullMoonNear(t + norm(Math.PI - thetaRad(t)) / (TAU / SYN));
-    if (tf <= t + 0.01) tf = fullMoonNear(tf + SYN); // already at (or just past) full: go to the following one
-    return tf;
+  // Which of the 8 named phases the page shows at time t (4 = Full Moon, about ±1.8 days around the exact moment).
+  const phaseIdx = (t) => Math.round(norm(thetaRad(t)) / (TAU / 8)) % 8;
+  // First calendar day labelled with phase `idx` (0 = New, 4 = Full) for the exact phase moment te,
+  // at local noon (as the date picker shows it).
+  function firstPhaseDay(te, idx) {
+    const dt = new Date(te * DAY_MS);
+    const y = dt.getFullYear(), m = dt.getMonth();
+    let d = dt.getDate();
+    while (phaseIdx(localNoon(y, m, d - 1)) === idx) d--;   // Date handles day 0, -1 … across months
+    return localNoon(y, m, d);
   }
-  function prevFull(t) {
-    let tf = fullMoonNear(t - norm(thetaRad(t) - Math.PI) / (TAU / SYN));
-    if (tf >= t - 0.01) tf = fullMoonNear(tf - SYN); // already at (or just before) full: go to the one before
-    return tf;
+  // Jump to the first labelled day of the next (dir > 0) or previous (dir < 0) New / Full Moon.
+  // If we're already inside that phase's labelled days, the current one is skipped.
+  function phaseDayJump(t, dir, idx) {
+    const near = idx === 0 ? newMoonNear : fullMoonNear;
+    const tc = near(t), fd = firstPhaseDay(tc, idx), inside = phaseIdx(t) === idx;
+    if (dir > 0) return !inside && fd > t + 0.01 ? fd : firstPhaseDay(near(tc + SYN), idx);
+    return !inside && fd < t - 0.01 ? fd : firstPhaseDay(near(tc - SYN), idx);
   }
   function lastNew(t) {
     let tn = newMoonNear(t - norm(thetaRad(t)) / (TAU / SYN));
@@ -1157,20 +1166,16 @@
   $('aScale').addEventListener('input', (e) => setScale(+e.target.value));
   $('aTrail').addEventListener('change', (e) => { adv.trail = e.target.checked; renderAdv(); });
   $('aGhost').addEventListener('change', (e) => { adv.ghost = e.target.checked; renderAdv(); });
-  $('aPrevNew').addEventListener('click', () => {
-    setAdvPlaying(false);
-    const tN = lastNew(adv.t);
-    setAdvT(adv.t - tN < 0.05 ? newMoonNear(tN - SYN) : tN);
-  });
-  $('aNextNew').addEventListener('click', () => { setAdvPlaying(false); setAdvT(newMoonNear(lastNew(adv.t) + SYN)); });
+  $('aPrevNew').addEventListener('click', () => { setAdvPlaying(false); setAdvT(phaseDayJump(adv.t, -1, 0)); });
+  $('aNextNew').addEventListener('click', () => { setAdvPlaying(false); setAdvT(phaseDayJump(adv.t, 1, 0)); });
   $('aDate').addEventListener('change', (e) => {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(e.target.value);
     if (!m) return;
     setAdvPlaying(false);
     setAdvT(localNoon(+m[1], +m[2] - 1, +m[3]));
   });
-  $('aNextFull').addEventListener('click', () => { setAdvPlaying(false); setAdvT(nextFull(adv.t)); });
-  $('aPrevFull').addEventListener('click', () => { setAdvPlaying(false); setAdvT(prevFull(adv.t)); });
+  $('aNextFull').addEventListener('click', () => { setAdvPlaying(false); setAdvT(phaseDayJump(adv.t, 1, 4)); });
+  $('aPrevFull').addEventListener('click', () => { setAdvPlaying(false); setAdvT(phaseDayJump(adv.t, -1, 4)); });
   $('aToday').addEventListener('click', () => { setAdvPlaying(false); setAdvT(Date.now() / DAY_MS); });
   $('aSid').addEventListener('click', () => { setAdvPlaying(false); setAdvT(adv.t + SID); });
 

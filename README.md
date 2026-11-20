@@ -14,7 +14,7 @@ An interactive, single-page explanation of the lunar cycle: why the Moon has pha
 
 ### Around the Sun tab (advanced)
 - Earth orbiting the Sun with month labels, and the Moon orbiting Earth, seen with the stars fixed.
-- **Go to date:** pick any date between 1900 and 2100 (or press *Today*) to see the real Moon phase and the real positions on that day. *Previous/Next full Moon* and *Previous/Next new Moon* jump straight to those moments.
+- **Go to date:** pick any date between 1900 and 2100 (or press *Today*) to see the real Moon phase and the real positions on that day. *Previous/Next full Moon* and *Previous/Next new Moon* jump to the first day the page labels that phase.
 - A close-up showing why new Moon to new Moon takes 29.5 days (synodic month) while one turn against the stars takes only 27.3 days (sidereal month).
 - A Moon-distance slider from ×1 (true scale) to ×60, showing that the Moon's real path around the Sun never loops.
 
